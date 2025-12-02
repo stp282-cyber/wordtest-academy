@@ -4,15 +4,18 @@ import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
 
+import { useAuth } from '../../context/AuthContext';
+
 const Settings = () => {
+    const { user, updateUser } = useAuth();
     const [activeTab, setActiveTab] = useState('profile');
     const [loading, setLoading] = useState(false);
 
-    // Mock Data
+    // Initialize with user data
     const [profile, setProfile] = useState({
-        nickname: 'SuperStudent',
-        avatar: '😎',
-        email: 'student@test.com'
+        nickname: user?.full_name || user?.username || '',
+        avatar: user?.avatar || '😎',
+        email: user?.email || ''
     });
 
     const [preferences, setPreferences] = useState({
@@ -32,10 +35,17 @@ const Settings = () => {
 
     const handleSave = () => {
         setLoading(true);
+
+        // Update global user state
+        updateUser({
+            full_name: profile.nickname,
+            avatar: profile.avatar
+        });
+
         // Simulate API call
         setTimeout(() => {
             setLoading(false);
-            alert('Settings saved successfully!');
+            alert('설정이 저장되었습니다!');
         }, 1000);
     };
 
@@ -57,17 +67,17 @@ const Settings = () => {
     return (
         <div className="max-w-4xl mx-auto space-y-6">
             <div>
-                <h1 className="text-3xl font-black text-black uppercase italic">Settings</h1>
-                <p className="text-slate-600 font-bold font-mono">Customize your learning experience</p>
+                <h1 className="text-3xl font-black text-black uppercase italic">설정</h1>
+                <p className="text-slate-600 font-bold font-mono">나만의 학습 환경을 꾸며보세요!</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 {/* Sidebar Navigation */}
                 <div className="space-y-2">
-                    <TabButton id="profile" icon={User} label="Profile" />
-                    <TabButton id="learning" icon={Target} label="Learning" />
-                    <TabButton id="security" icon={Lock} label="Security" />
-                    <TabButton id="notifications" icon={Bell} label="Notifications" />
+                    <TabButton id="profile" icon={User} label="내 프로필" />
+                    <TabButton id="learning" icon={Target} label="학습 목표" />
+                    <TabButton id="security" icon={Lock} label="비밀번호" />
+                    <TabButton id="notifications" icon={Bell} label="알림 설정" />
                 </div>
 
                 {/* Main Content Area */}
@@ -77,11 +87,11 @@ const Settings = () => {
                         {activeTab === 'profile' && (
                             <div className="space-y-8 animate-fade-in">
                                 <h2 className="text-2xl font-black uppercase border-b-4 border-black inline-block pr-8 bg-yellow-300">
-                                    Edit Profile
+                                    프로필 수정
                                 </h2>
 
                                 <div className="space-y-4">
-                                    <label className="block font-black text-sm uppercase">Choose Avatar</label>
+                                    <label className="block font-black text-sm uppercase">아바타 선택</label>
                                     <div className="flex flex-wrap gap-3">
                                         {avatars.map(emoji => (
                                             <button
@@ -100,12 +110,12 @@ const Settings = () => {
 
                                 <div className="space-y-4">
                                     <Input
-                                        label="Nickname"
+                                        label="닉네임"
                                         value={profile.nickname}
                                         onChange={(e) => setProfile({ ...profile, nickname: e.target.value })}
                                     />
                                     <Input
-                                        label="Email"
+                                        label="이메일"
                                         value={profile.email}
                                         disabled
                                         className="bg-slate-100 cursor-not-allowed"
@@ -118,14 +128,14 @@ const Settings = () => {
                         {activeTab === 'learning' && (
                             <div className="space-y-8 animate-fade-in">
                                 <h2 className="text-2xl font-black uppercase border-b-4 border-black inline-block pr-8 bg-blue-300">
-                                    Learning Goals
+                                    나의 목표
                                 </h2>
 
                                 <div className="space-y-6">
                                     <div className="p-6 border-2 border-black bg-slate-50 shadow-neo-sm">
                                         <div className="flex justify-between mb-2">
-                                            <label className="font-black uppercase">Daily Word Goal</label>
-                                            <span className="font-mono font-bold text-blue-600">{preferences.dailyGoal} words</span>
+                                            <label className="font-black uppercase">하루 목표 단어</label>
+                                            <span className="font-mono font-bold text-blue-600">{preferences.dailyGoal}개</span>
                                         </div>
                                         <input
                                             type="range"
@@ -136,29 +146,29 @@ const Settings = () => {
                                             onChange={(e) => setPreferences({ ...preferences, dailyGoal: parseInt(e.target.value) })}
                                             className="w-full h-4 bg-white border-2 border-black rounded-full appearance-none cursor-pointer accent-black"
                                         />
-                                        <p className="text-xs font-bold text-slate-500 mt-2">Recommended: 30 words per day</p>
+                                        <p className="text-xs font-bold text-slate-500 mt-2">추천: 하루 30개씩 외워보세요!</p>
                                     </div>
 
                                     <div className="space-y-4">
                                         <h3 className="font-black uppercase flex items-center">
-                                            <Volume2 className="w-5 h-5 mr-2" /> Audio Settings
+                                            <Volume2 className="w-5 h-5 mr-2" /> 소리 설정
                                         </h3>
 
                                         <div className="flex items-center justify-between p-4 border-2 border-black bg-white">
-                                            <span className="font-bold">TTS Speed (Reading)</span>
+                                            <span className="font-bold">읽어주기 속도</span>
                                             <select
                                                 value={preferences.ttsSpeed}
                                                 onChange={(e) => setPreferences({ ...preferences, ttsSpeed: parseFloat(e.target.value) })}
                                                 className="border-2 border-black px-2 py-1 font-mono font-bold focus:outline-none"
                                             >
-                                                <option value="0.8">0.8x (Slow)</option>
-                                                <option value="1.0">1.0x (Normal)</option>
-                                                <option value="1.2">1.2x (Fast)</option>
+                                                <option value="0.8">0.8x (느리게)</option>
+                                                <option value="1.0">1.0x (보통)</option>
+                                                <option value="1.2">1.2x (빠르게)</option>
                                             </select>
                                         </div>
 
                                         <div className="flex items-center justify-between p-4 border-2 border-black bg-white">
-                                            <span className="font-bold">Sound Effects</span>
+                                            <span className="font-bold">효과음</span>
                                             <button
                                                 onClick={() => setPreferences({ ...preferences, soundEffects: !preferences.soundEffects })}
                                                 className={`w-12 h-6 border-2 border-black rounded-full relative transition-colors ${preferences.soundEffects ? 'bg-green-400' : 'bg-slate-200'}`}
@@ -175,22 +185,22 @@ const Settings = () => {
                         {activeTab === 'security' && (
                             <div className="space-y-8 animate-fade-in">
                                 <h2 className="text-2xl font-black uppercase border-b-4 border-black inline-block pr-8 bg-red-300">
-                                    Change Password
+                                    비밀번호 변경
                                 </h2>
 
                                 <div className="space-y-4 max-w-md">
                                     <Input
-                                        label="Current Password"
+                                        label="현재 비밀번호"
                                         type="password"
                                         placeholder="••••••••"
                                     />
                                     <Input
-                                        label="New Password"
+                                        label="새 비밀번호"
                                         type="password"
                                         placeholder="••••••••"
                                     />
                                     <Input
-                                        label="Confirm New Password"
+                                        label="새 비밀번호 확인"
                                         type="password"
                                         placeholder="••••••••"
                                     />
@@ -202,14 +212,14 @@ const Settings = () => {
                         {activeTab === 'notifications' && (
                             <div className="space-y-8 animate-fade-in">
                                 <h2 className="text-2xl font-black uppercase border-b-4 border-black inline-block pr-8 bg-purple-300">
-                                    Notifications
+                                    알림 설정
                                 </h2>
 
                                 <div className="space-y-4">
                                     {[
-                                        { id: 'homework', label: 'New Homework Assignments' },
-                                        { id: 'testResult', label: 'Test Results Available' },
-                                        { id: 'ranking', label: 'Weekly Ranking Updates' }
+                                        { id: 'homework', label: '새로운 숙제 알림' },
+                                        { id: 'testResult', label: '시험 결과 알림' },
+                                        { id: 'ranking', label: '주간 랭킹 알림' }
                                     ].map(item => (
                                         <div key={item.id} className="flex items-center justify-between p-4 border-2 border-black bg-white hover:bg-slate-50 transition-colors">
                                             <span className="font-bold">{item.label}</span>
@@ -235,7 +245,7 @@ const Settings = () => {
                                 isLoading={loading}
                                 className="bg-green-400 text-black hover:bg-green-500 shadow-neo hover:shadow-neo-lg"
                             >
-                                <Save className="w-5 h-5 mr-2" /> Save Changes
+                                <Save className="w-5 h-5 mr-2" /> 저장하기
                             </Button>
                         </div>
                     </Card>

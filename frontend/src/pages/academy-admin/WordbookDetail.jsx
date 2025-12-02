@@ -1,135 +1,135 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Plus, Save, Trash2 } from 'lucide-react';
+import { ArrowLeft, Save, Plus, Trash2, Volume2 } from 'lucide-react';
+import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
-import Card from '../../components/common/Card';
-import client from '../../api/client';
 
 const WordbookDetail = () => {
     const { id } = useParams();
-    const [words, setWords] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [newWord, setNewWord] = useState({ english: '', korean: '', type: 'noun' });
+    const [wordbook, setWordbook] = useState(null);
+    const [words, setWords] = useState([]);
 
     useEffect(() => {
-        fetchWords();
+        // Simulate API fetch
+        setTimeout(() => {
+            setWordbook({
+                id,
+                title: 'Chapter 1: Basic Greetings',
+                description: 'Essential greetings and introductions for beginners.',
+                level: 'Beginner'
+            });
+            setWords([
+                { id: 1, english: 'Hello', korean: '안녕하세요', example: 'Hello, nice to meet you.' },
+                { id: 2, english: 'Goodbye', korean: '안녕히 가세요', example: 'Goodbye, see you tomorrow.' },
+                { id: 3, english: 'Thank you', korean: '감사합니다', example: 'Thank you for your help.' },
+                { id: 4, english: 'Sorry', korean: '죄송합니다', example: 'I am sorry for being late.' },
+                { id: 5, english: 'Yes', korean: '네', example: 'Yes, I understand.' },
+            ]);
+            setLoading(false);
+        }, 1000);
     }, [id]);
 
-    const fetchWords = async () => {
-        try {
-            const response = await client.get(`/wordbooks/${id}/words`);
-            setWords(response.data);
-        } catch (error) {
-            console.error('Failed to fetch words:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleAddWord = async (e) => {
-        e.preventDefault();
-        try {
-            const response = await client.post(`/wordbooks/${id}/words`, newWord);
-            setWords([...words, response.data]);
-            setNewWord({ english: '', korean: '', type: 'noun' }); // Reset form
-        } catch (error) {
-            console.error('Failed to add word:', error);
-            alert('Failed to add word');
-        }
-    };
+    if (loading) return <div className="p-12 text-center font-bold">Loading wordbook details...</div>;
 
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div className="flex items-center justify-between bg-white border-4 border-black p-6 shadow-neo-lg">
-                <div className="flex items-center gap-4">
+            <div className="flex flex-col md:flex-row justify-between items-start gap-4">
+                <div className="flex items-start gap-4">
                     <Link to="/academy-admin/wordbooks">
-                        <Button variant="secondary" size="sm" className="border-2 border-black">
-                            <ArrowLeft className="w-4 h-4" />
+                        <Button variant="secondary" className="p-2 border-2 border-black shadow-neo hover:shadow-neo-sm">
+                            <ArrowLeft className="w-5 h-5" />
                         </Button>
                     </Link>
                     <div>
-                        <h1 className="text-2xl font-black text-black uppercase">Wordbook Details</h1>
-                        <p className="text-slate-600 font-bold font-mono">ID: {id}</p>
+                        <h1 className="text-3xl font-black text-black uppercase italic">{wordbook.title}</h1>
+                        <p className="text-slate-600 font-bold font-mono">{wordbook.description}</p>
                     </div>
+                </div>
+                <div className="flex gap-3">
+                    <Button className="bg-green-400 text-black hover:bg-green-500 shadow-neo hover:shadow-neo-lg border-black">
+                        <Save className="w-5 h-5 mr-2" /> Save Changes
+                    </Button>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Add Word Form */}
-                <div className="lg:col-span-1">
-                    <Card className="border-2 border-black shadow-neo sticky top-6">
-                        <h3 className="text-xl font-black text-black mb-4 uppercase border-b-2 border-black pb-2">Add New Word</h3>
-                        <form onSubmit={handleAddWord} className="space-y-4">
-                            <Input
-                                label="English Word"
-                                value={newWord.english}
-                                onChange={(e) => setNewWord({ ...newWord, english: e.target.value })}
-                                placeholder="e.g. Apple"
-                                required
-                            />
-                            <Input
-                                label="Korean Meaning"
-                                value={newWord.korean}
-                                onChange={(e) => setNewWord({ ...newWord, korean: e.target.value })}
-                                placeholder="e.g. 사과"
-                                required
-                            />
-                            <div>
-                                <label className="block text-sm font-bold text-black mb-1 uppercase">Type</label>
-                                <select
-                                    className="neo-input w-full"
-                                    value={newWord.type}
-                                    onChange={(e) => setNewWord({ ...newWord, type: e.target.value })}
-                                >
-                                    <option value="noun">Noun</option>
-                                    <option value="verb">Verb</option>
-                                    <option value="adjective">Adjective</option>
-                                    <option value="adverb">Adverb</option>
-                                </select>
-                            </div>
-                            <Button type="submit" className="w-full bg-black text-white hover:bg-slate-800 shadow-neo border-white">
-                                <Plus className="w-4 h-4 mr-2" /> Add Word
+            {/* Content */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Word List */}
+                <div className="lg:col-span-2 space-y-4">
+                    <Card className="border-4 border-black shadow-neo-lg bg-white p-0 overflow-hidden">
+                        <div className="p-4 border-b-4 border-black bg-slate-100 flex justify-between items-center">
+                            <h3 className="font-black uppercase text-lg">Word List ({words.length})</h3>
+                            <Button size="sm" className="bg-black text-white hover:bg-slate-800">
+                                <Plus className="w-4 h-4 mr-1" /> Add Word
                             </Button>
-                        </form>
+                        </div>
+
+                        <div className="divide-y-2 divide-black">
+                            {words.map((word, index) => (
+                                <div key={word.id} className="p-4 hover:bg-yellow-50 transition-colors group flex items-start gap-4">
+                                    <div className="w-8 h-8 bg-black text-white flex items-center justify-center font-black border-2 border-black shadow-neo-sm shrink-0">
+                                        {index + 1}
+                                    </div>
+                                    <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="text-xs font-bold text-slate-500 uppercase">English</label>
+                                            <input
+                                                type="text"
+                                                value={word.english}
+                                                className="w-full font-black text-lg bg-transparent border-b-2 border-transparent focus:border-black focus:outline-none transition-colors"
+                                                readOnly
+                                            />
+                                            <p className="text-sm text-slate-600 mt-1 italic">"{word.example}"</p>
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-bold text-slate-500 uppercase">Korean</label>
+                                            <input
+                                                type="text"
+                                                value={word.korean}
+                                                className="w-full font-bold text-lg bg-transparent border-b-2 border-transparent focus:border-black focus:outline-none transition-colors"
+                                                readOnly
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button className="p-1 hover:bg-blue-200 rounded border-2 border-transparent hover:border-black">
+                                            <Volume2 className="w-4 h-4" />
+                                        </button>
+                                        <button className="p-1 hover:bg-red-200 rounded border-2 border-transparent hover:border-black">
+                                            <Trash2 className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
                     </Card>
                 </div>
 
-                {/* Word List */}
-                <div className="lg:col-span-2">
-                    <Card className="border-2 border-black shadow-neo bg-white">
-                        <div className="flex items-center justify-between mb-4 border-b-2 border-black pb-2">
-                            <h3 className="text-xl font-black text-black uppercase">Word List ({words.length})</h3>
-                        </div>
-
-                        {loading ? (
-                            <div className="text-center py-8 font-bold">Loading words...</div>
-                        ) : (
-                            <div className="space-y-2">
-                                {words.map((word, index) => (
-                                    <div key={word.id || index} className="flex items-center justify-between p-3 border-2 border-black hover:bg-slate-50 transition-colors">
-                                        <div className="flex items-center gap-4">
-                                            <span className="w-8 h-8 flex items-center justify-center bg-black text-white font-bold border-2 border-black text-sm">
-                                                {index + 1}
-                                            </span>
-                                            <div>
-                                                <p className="font-black text-lg">{word.english}</p>
-                                                <p className="text-sm font-bold text-slate-500">{word.korean} <span className="text-xs bg-slate-200 px-1 border border-black ml-2">{word.type}</span></p>
-                                            </div>
-                                        </div>
-                                        <button className="text-red-500 hover:text-red-700 p-2">
-                                            <Trash2 className="w-5 h-5" />
-                                        </button>
-                                    </div>
-                                ))}
-                                {words.length === 0 && (
-                                    <div className="text-center py-8 text-slate-500 font-bold italic">
-                                        No words added yet. Start adding some!
-                                    </div>
-                                )}
+                {/* Sidebar Info */}
+                <div className="space-y-6">
+                    <Card className="border-4 border-black shadow-neo bg-white">
+                        <h3 className="font-black uppercase text-lg mb-4 border-b-2 border-black pb-2">Settings</h3>
+                        <div className="space-y-4">
+                            <Input label="Title" value={wordbook.title} />
+                            <div>
+                                <label className="block text-sm font-black mb-1 uppercase">Description</label>
+                                <textarea
+                                    className="w-full p-3 border-2 border-black font-bold focus:outline-none focus:shadow-neo-sm resize-none h-24"
+                                    value={wordbook.description}
+                                />
                             </div>
-                        )}
+                            <div>
+                                <label className="block text-sm font-black mb-1 uppercase">Level</label>
+                                <select className="w-full p-3 border-2 border-black font-bold focus:outline-none focus:shadow-neo-sm bg-white">
+                                    <option>Beginner</option>
+                                    <option>Intermediate</option>
+                                    <option>Advanced</option>
+                                </select>
+                            </div>
+                        </div>
                     </Card>
                 </div>
             </div>

@@ -10,6 +10,9 @@ import WordbookDetail from './pages/academy-admin/WordbookDetail';
 import StudentList from './pages/academy-admin/StudentList';
 import ClassList from './pages/academy-admin/ClassList';
 import ClassDetail from './pages/academy-admin/ClassDetail';
+import Reports from './pages/academy-admin/Reports';
+import CurriculumList from './pages/academy-admin/CurriculumList';
+import CurriculumDetail from './pages/academy-admin/CurriculumDetail';
 import SuperAdminDashboard from './pages/super-admin/Dashboard';
 import SuperAdminAcademies from './pages/super-admin/Academies';
 import SuperAdminUsers from './pages/super-admin/Users';
@@ -19,7 +22,7 @@ import Games from './pages/student/Games';
 import WordMatchGame from './pages/student/WordMatch';
 import SpeedTyping from './pages/student/SpeedTyping';
 import Settings from './pages/student/Settings';
-import { Home, Book, Trophy, Settings as SettingsIcon, Users, BookOpen, GraduationCap, TrendingUp, LayoutDashboard, Building2, Activity } from 'lucide-react';
+import { Home, Book, Trophy, Settings as SettingsIcon, Users, BookOpen, GraduationCap, TrendingUp, LayoutDashboard, Building2, Activity, Layers } from 'lucide-react';
 import { AuthProvider } from './context/AuthContext';
 
 const studentMenuItems = [
@@ -33,6 +36,7 @@ const academyMenuItems = [
     { icon: LayoutDashboard, label: 'Dashboard', to: '/academy-admin' },
     { icon: Users, label: 'Students', to: '/academy-admin/students' },
     { icon: BookOpen, label: 'Wordbooks', to: '/academy-admin/wordbooks' },
+    { icon: Layers, label: 'Curriculum', to: '/academy-admin/curriculums' },
     { icon: GraduationCap, label: 'Classes', to: '/academy-admin/classes' },
     { icon: TrendingUp, label: 'Reports', to: '/academy-admin/reports' },
 ];
@@ -70,9 +74,12 @@ function App() {
                         <Route index element={<AcademyDashboard />} />
                         <Route path="wordbooks" element={<WordbookList />} />
                         <Route path="wordbooks/:id" element={<WordbookDetail />} />
+                        <Route path="curriculums" element={<CurriculumList />} />
+                        <Route path="curriculums/:id" element={<CurriculumDetail />} />
                         <Route path="students" element={<StudentList />} />
                         <Route path="classes" element={<ClassList />} />
                         <Route path="classes/:id" element={<ClassDetail />} />
+                        <Route path="reports" element={<Reports />} />
                     </Route>
 
                     {/* Super Admin Routes */}

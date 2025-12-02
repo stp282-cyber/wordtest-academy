@@ -21,6 +21,7 @@ const SidebarItem = ({ icon: Icon, label, to, active }) => (
 
 const MainLayout = ({ menuItems }) => {
     const [sidebarOpen, setSidebarOpen] = useState(true);
+    const [notificationsOpen, setNotificationsOpen] = useState(false);
     const location = useLocation();
     const { logout, user } = useAuth();
 
@@ -42,12 +43,12 @@ const MainLayout = ({ menuItems }) => {
             >
                 <div className="h-full flex flex-col p-6">
                     <div className="flex items-center justify-between mb-8">
-                        <div className="flex items-center">
+                        <Link to="/student" className="flex items-center hover:opacity-80 transition-opacity">
                             <div className="w-10 h-10 bg-black text-white flex items-center justify-center font-black text-xl border-2 border-white shadow-sm mr-3">
                                 W
                             </div>
                             <span className="text-2xl font-display font-black text-black tracking-tighter">WORDTEST</span>
-                        </div>
+                        </Link>
                         <button className="lg:hidden" onClick={() => setSidebarOpen(false)}>
                             <X className="w-6 h-6" />
                         </button>
@@ -87,17 +88,83 @@ const MainLayout = ({ menuItems }) => {
                     </button>
 
                     <div className="flex items-center ml-auto space-x-4">
-                        <button className="p-2 bg-white border-2 border-black shadow-neo-sm hover:shadow-neo hover:-translate-y-1 transition-all relative">
-                            <Bell className="w-5 h-5" />
-                            <span className="absolute -top-1 -right-1 w-3 h-3 bg-accent border-2 border-black" />
-                        </button>
+                        {/* Notification Dropdown */}
+                        <div className="relative">
+                            <button
+                                onClick={() => setNotificationsOpen(!notificationsOpen)}
+                                className="p-2 bg-white border-2 border-black shadow-neo-sm hover:shadow-neo hover:-translate-y-1 transition-all relative block"
+                            >
+                                <Bell className="w-5 h-5" />
+                                <span className="absolute -top-1 -right-1 w-3 h-3 bg-accent border-2 border-black" />
+                            </button>
+
+                            {notificationsOpen && (
+                                <>
+                                    <div
+                                        className="fixed inset-0 z-40"
+                                        onClick={() => setNotificationsOpen(false)}
+                                    />
+                                    <div className="absolute right-0 mt-2 w-80 bg-white border-4 border-black shadow-neo-lg z-50 animate-fade-in">
+                                        <div className="p-4 border-b-2 border-black bg-yellow-300">
+                                            <h3 className="font-black text-lg uppercase flex items-center">
+                                                <Bell className="w-5 h-5 mr-2" /> 알림함
+                                            </h3>
+                                        </div>
+                                        <div className="max-h-80 overflow-y-auto">
+                                            {/* Mock Notifications */}
+                                            <div className="p-4 border-b-2 border-black hover:bg-slate-50 cursor-pointer transition-colors">
+                                                <div className="flex items-start">
+                                                    <div className="w-2 h-2 mt-2 rounded-full bg-red-500 mr-3 shrink-0" />
+                                                    <div>
+                                                        <p className="font-bold text-sm">새로운 숙제가 도착했습니다!</p>
+                                                        <p className="text-xs text-slate-500 font-mono mt-1">방금 전 • Chapter 4 단어 암기</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="p-4 border-b-2 border-black hover:bg-slate-50 cursor-pointer transition-colors">
+                                                <div className="flex items-start">
+                                                    <div className="w-2 h-2 mt-2 rounded-full bg-blue-500 mr-3 shrink-0" />
+                                                    <div>
+                                                        <p className="font-bold text-sm">시험 결과가 나왔습니다.</p>
+                                                        <p className="text-xs text-slate-500 font-mono mt-1">1시간 전 • 점수: 95점</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="p-4 hover:bg-slate-50 cursor-pointer transition-colors">
+                                                <div className="flex items-start">
+                                                    <div className="w-2 h-2 mt-2 rounded-full bg-yellow-500 mr-3 shrink-0" />
+                                                    <div>
+                                                        <p className="font-bold text-sm">주간 랭킹 3위 달성! 🎉</p>
+                                                        <p className="text-xs text-slate-500 font-mono mt-1">어제 • 축하합니다!</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="p-3 bg-slate-100 border-t-4 border-black text-center">
+                                            <Link
+                                                to="/student/settings"
+                                                className="text-xs font-bold text-slate-500 hover:text-black hover:underline"
+                                                onClick={() => setNotificationsOpen(false)}
+                                            >
+                                                알림 설정 하러가기 →
+                                            </Link>
+                                        </div>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+
                         <div className="flex items-center pl-4 border-l-4 border-black">
                             <div className="text-right mr-3 hidden sm:block">
-                                <p className="text-sm font-black text-black uppercase">{user?.full_name || user?.username || 'User'}</p>
-                                <p className="text-xs font-bold text-slate-500 font-mono">{user?.role || 'GUEST'}</p>
+                                <p className="text-sm font-black text-black uppercase">{user?.full_name || user?.username || '학생'}</p>
+                                <p className="text-xs font-bold text-slate-500 font-mono">{user?.role === 'STUDENT' ? 'STUDENT' : user?.role || 'GUEST'}</p>
                             </div>
-                            <div className="w-10 h-10 bg-primary border-2 border-black flex items-center justify-center text-white shadow-neo-sm">
-                                <User className="w-6 h-6" />
+                            <div className="w-10 h-10 bg-primary border-2 border-black flex items-center justify-center text-white shadow-neo-sm overflow-hidden">
+                                {user?.avatar ? (
+                                    <span className="text-2xl">{user.avatar}</span>
+                                ) : (
+                                    <User className="w-6 h-6" />
+                                )}
                             </div>
                         </div>
                     </div>
