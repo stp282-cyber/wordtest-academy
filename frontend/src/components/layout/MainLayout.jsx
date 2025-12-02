@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { Menu, Bell, User, LogOut, ChevronRight, X } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 
 const SidebarItem = ({ icon: Icon, label, to, active }) => (
     <Link
@@ -21,6 +22,13 @@ const SidebarItem = ({ icon: Icon, label, to, active }) => (
 const MainLayout = ({ menuItems }) => {
     const [sidebarOpen, setSidebarOpen] = useState(true);
     const location = useLocation();
+    const { logout, user } = useAuth();
+
+    const handleLogout = () => {
+        if (window.confirm('로그아웃 하시겠습니까?')) {
+            logout();
+        }
+    };
 
     return (
         <div className="min-h-screen bg-bg flex font-sans">
@@ -45,7 +53,7 @@ const MainLayout = ({ menuItems }) => {
                         </button>
                     </div>
 
-                    <nav className="flex-1 overflow-y-auto space-y-2">
+                    <nav className="flex-1 overflow-y-auto overflow-x-hidden space-y-2 no-scrollbar">
                         {menuItems.map((item) => (
                             <SidebarItem
                                 key={item.to}
@@ -56,7 +64,10 @@ const MainLayout = ({ menuItems }) => {
                     </nav>
 
                     <div className="mt-auto pt-6 border-t-4 border-black">
-                        <button className="flex items-center w-full px-4 py-3 bg-white border-2 border-black shadow-neo hover:bg-accent hover:text-white transition-all font-bold">
+                        <button
+                            onClick={handleLogout}
+                            className="flex items-center w-full px-4 py-3 bg-white border-2 border-black shadow-neo hover:bg-accent hover:text-white transition-all font-bold"
+                        >
                             <LogOut className="w-5 h-5 mr-3" />
                             <span>SIGN OUT</span>
                         </button>
@@ -82,8 +93,8 @@ const MainLayout = ({ menuItems }) => {
                         </button>
                         <div className="flex items-center pl-4 border-l-4 border-black">
                             <div className="text-right mr-3 hidden sm:block">
-                                <p className="text-sm font-black text-black uppercase">John Doe</p>
-                                <p className="text-xs font-bold text-slate-500 font-mono">STUDENT</p>
+                                <p className="text-sm font-black text-black uppercase">{user?.full_name || user?.username || 'User'}</p>
+                                <p className="text-xs font-bold text-slate-500 font-mono">{user?.role || 'GUEST'}</p>
                             </div>
                             <div className="w-10 h-10 bg-primary border-2 border-black flex items-center justify-center text-white shadow-neo-sm">
                                 <User className="w-6 h-6" />

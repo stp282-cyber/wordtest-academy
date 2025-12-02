@@ -21,7 +21,13 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Database Initialization
-database.initialize();
+(async () => {
+    try {
+        await database.initialize();
+    } catch (err) {
+        console.error('Failed to initialize database:', err);
+    }
+})();
 
 // Routes
 app.use('/api/auth', require('./routes/auth'));

@@ -13,17 +13,20 @@ import ClassDetail from './pages/academy-admin/ClassDetail';
 import SuperAdminDashboard from './pages/super-admin/Dashboard';
 import SuperAdminAcademies from './pages/super-admin/Academies';
 import SuperAdminUsers from './pages/super-admin/Users';
+import SuperAdminSystem from './pages/super-admin/System';
 import Learning from './pages/student/Learning';
 import Games from './pages/student/Games';
 import WordMatchGame from './pages/student/WordMatch';
-import { Home, Book, Trophy, Settings, Users, BookOpen, GraduationCap, TrendingUp, LayoutDashboard, Building2, Activity } from 'lucide-react';
+import SpeedTyping from './pages/student/SpeedTyping';
+import Settings from './pages/student/Settings';
+import { Home, Book, Trophy, Settings as SettingsIcon, Users, BookOpen, GraduationCap, TrendingUp, LayoutDashboard, Building2, Activity } from 'lucide-react';
 import { AuthProvider } from './context/AuthContext';
 
 const studentMenuItems = [
     { icon: Home, label: 'Dashboard', to: '/student' },
     { icon: Book, label: 'My Learning', to: '/student/learning' },
     { icon: Trophy, label: 'Games', to: '/student/games' },
-    { icon: Settings, label: 'Settings', to: '/student/settings' },
+    { icon: SettingsIcon, label: 'Settings', to: '/student/settings' },
 ];
 
 const academyMenuItems = [
@@ -58,6 +61,8 @@ function App() {
                         <Route path="learning" element={<Learning />} />
                         <Route path="games" element={<Games />} />
                         <Route path="games/match" element={<WordMatchGame />} />
+                        <Route path="games/typing" element={<SpeedTyping />} />
+                        <Route path="settings" element={<Settings />} />
                     </Route>
 
                     {/* Academy Admin Routes */}
@@ -75,6 +80,7 @@ function App() {
                         <Route index element={<SuperAdminDashboard />} />
                         <Route path="academies" element={<SuperAdminAcademies />} />
                         <Route path="users" element={<SuperAdminUsers />} />
+                        <Route path="system" element={<SuperAdminSystem />} />
                     </Route>
 
                     {/* Default Redirect */}

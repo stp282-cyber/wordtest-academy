@@ -82,12 +82,18 @@ class MockConnection {
 
         const sqlLower = sql.toLowerCase().trim();
 
+        // Normalize binds keys to lowercase
+        const normalizedBinds = {};
+        for (const key in binds) {
+            normalizedBinds[key.toLowerCase()] = binds[key];
+        }
+
         // 1. User queries
         if (sqlLower.includes('select * from users') && (sqlLower.includes('username') || sqlLower.includes('email'))) {
+            const username = normalizedBinds.username || normalizedBinds.email;
             const user = store.users.find(u =>
-                u.username === binds.username ||
-                u.email === binds.username ||
-                u.email === binds.email
+                u.username === username ||
+                u.email === username
             );
             return { rows: user ? [user] : [] };
         }
@@ -98,7 +104,7 @@ class MockConnection {
         }
 
         if (sqlLower.includes('select * from users') && sqlLower.includes('id = :id')) {
-            const id = Array.isArray(binds) ? binds[0] : binds.id;
+            const id = Array.isArray(binds) ? binds[0] : normalizedBinds.id;
             const user = store.users.find(u => u.id === id);
             return { rows: user ? [user] : [] };
         }
@@ -120,7 +126,7 @@ class MockConnection {
 
         if (sqlLower.includes('select * from academies') && sqlLower.includes('id = :id')) {
             // Find By ID
-            const id = Array.isArray(binds) ? binds[0] : binds.id;
+            const id = Array.isArray(binds) ? binds[0] : normalizedBinds.id;
             const academy = store.academies.find(a => a.id === id);
             if (academy) {
                 return {
@@ -140,7 +146,14 @@ class MockConnection {
 
         // 2. Analytics queries
         if (sqlLower.includes('from test_results') && sqlLower.includes('student_id')) {
-            const studentId = binds.studentId || binds.studentid;
+            const studentId = normalizedBinds.studentid;
+            console.log('[MockDB] Fetching test results for student:', studentId);
+
+            if (!studentId) {
+                console.error('[MockDB] Error: studentId is missing in binds', binds);
+                return { rows: [] };
+            }
+
             const results = store.test_results.filter(r => r.student_id === studentId);
             // Convert to uppercase keys for Oracle compatibility
             const formattedResults = results.map(r => ({
@@ -162,7 +175,7 @@ class MockConnection {
 
         // 3. Learning queries - Get wordbook for student
         if (sqlLower.includes('from student_curriculum') && sqlLower.includes('curriculum_items')) {
-            const studentId = binds.studentId || binds.studentid;
+            const studentId = normalizedBinds.studentid;
             const curriculum = store.student_curriculum.find(sc => sc.student_id === studentId && sc.status === 'active');
             if (curriculum) {
                 const item = store.curriculum_items.find(ci => ci.template_id === curriculum.template_id);
@@ -183,7 +196,7 @@ class MockConnection {
 
         // 5. Words by wordbook
         if (sqlLower.includes('from words') && sqlLower.includes('wordbook_id')) {
-            const wordbookId = binds.wordbookId || binds.wordbookid;
+            const wordbookId = normalizedBinds.wordbookid;
             const words = store.words.filter(w => w.wordbook_id === wordbookId);
             // Convert to uppercase keys
             const formattedWords = words.map(w => ({
@@ -198,7 +211,7 @@ class MockConnection {
 
         // 6. Wordbooks queries
         if (sqlLower.includes('from wordbooks') && sqlLower.includes('academy_id')) {
-            const academyId = binds.academyId || binds.academyid;
+            const academyId = normalizedBinds.academyid;
             const wordbooks = store.wordbooks.filter(wb => wb.academy_id === academyId);
             const formattedWordbooks = wordbooks.map(wb => ({
                 ID: wb.id,
@@ -212,10 +225,10 @@ class MockConnection {
         // 7. INSERT queries
         if (sqlLower.includes('insert into academies')) {
             const newAcademy = {
-                id: binds.id || `academy-${Date.now()}`,
-                name: binds.name,
-                subdomain: binds.subdomain,
-                owner_id: binds.owner_id,
+                id: normalizedBinds.id || `academy-${Date.now()}`,
+                name: normalizedBinds.name,
+                subdomain: normalizedBinds.subdomain,
+                owner_id: normalizedBinds.owner_id,
                 plan: 'free', // Default
                 created_at: new Date(),
                 updated_at: new Date()
@@ -227,14 +240,14 @@ class MockConnection {
 
         if (sqlLower.includes('insert into users')) {
             const newUser = {
-                id: binds.id || `user-${Date.now()}`,
-                academy_id: binds.academy_id,
-                username: binds.username,
-                password_hash: binds.password, // Note: User.create passes hashed password as 'password' bind
-                full_name: binds.name,
-                role: binds.role,
-                email: binds.email,
-                phone: binds.phone,
+                id: normalizedBinds.id || `user-${Date.now()}`,
+                academy_id: normalizedBinds.academy_id,
+                username: normalizedBinds.username,
+                password_hash: normalizedBinds.password, // Note: User.create passes hashed password as 'password' bind
+                full_name: normalizedBinds.name,
+                role: normalizedBinds.role,
+                email: normalizedBinds.email,
+                phone: normalizedBinds.phone,
                 status: 'active',
                 created_at: new Date(),
                 updated_at: new Date()
