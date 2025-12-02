@@ -21,23 +21,90 @@ const ClassList = () => {
     useEffect(() => {
         const savedClasses = localStorage.getItem('classes');
         if (savedClasses) {
-            setClasses(JSON.parse(savedClasses));
-            setLoading(false);
+            try {
+                const parsedClasses = JSON.parse(savedClasses);
+                // Validate that we have an array of class objects, not student objects
+                // Class objects should have 'schedule' and 'time' properties
+                // Student objects have 'email' property
+                const validClasses = Array.isArray(parsedClasses)
+                    ? parsedClasses.filter(item =>
+                        item &&
+                        typeof item === 'object' &&
+                        'schedule' in item &&
+                        'time' in item &&
+                        !('email' in item) // Exclude student objects
+                    )
+                    : [];
+
+                console.log('ClassList: Valid classes count:', validClasses.length);
+                console.log('ClassList: Valid classes:', JSON.stringify(validClasses, null, 2));
+
+                if (validClasses.length > 0) {
+                    console.log('ClassList: Setting classes state with valid classes');
+                    setClasses(validClasses);
+                    // Update localStorage with cleaned data
+                    localStorage.setItem('classes', JSON.stringify(validClasses));
+                    setLoading(false);
+                } else {
+                    console.warn('No valid classes found in localStorage, loading initial data');
+                    loadInitialData();
+                }
+            } catch (error) {
+                console.error('Failed to parse classes from localStorage:', error);
+                // Fallback to initial data simulation if parsing fails
+                loadInitialData();
+            }
         } else {
-            // Simulate API fetch for initial data
-            setTimeout(() => {
-                const initialClasses = [
-                    { id: 1, name: 'Class A', students: 12, schedule: '월, 수, 금', time: '14:00 - 15:30', color: 'bg-yellow-200' },
-                    { id: 2, name: 'Class B', students: 8, schedule: '화, 목', time: '16:00 - 17:30', color: 'bg-blue-200' },
-                    { id: 3, name: 'Class C', students: 15, schedule: '월, 수, 금', time: '16:00 - 17:30', color: 'bg-green-200' },
-                    { id: 4, name: '심화반', students: 5, schedule: '토', time: '10:00 - 13:00', color: 'bg-purple-200' },
-                ];
-                setClasses(initialClasses);
-                localStorage.setItem('classes', JSON.stringify(initialClasses));
-                setLoading(false);
-            }, 1000);
+            loadInitialData();
         }
+
+        // Listen for storage changes
+        const handleStorageChange = (e) => {
+            if (e.key === 'students' || e.key === 'classes') {
+                // Force re-render to update student counts
+                setClasses(prev => [...prev]);
+            }
+        };
+
+        const handleLocalUpdate = () => {
+            setClasses(prev => [...prev]);
+        };
+
+        window.addEventListener('storage', handleStorageChange);
+        window.addEventListener('localStorageUpdated', handleLocalUpdate);
+
+        return () => {
+            window.removeEventListener('storage', handleStorageChange);
+            window.removeEventListener('localStorageUpdated', handleLocalUpdate);
+        };
     }, []);
+
+    const loadInitialData = () => {
+        // Simulate API fetch for initial data
+        setTimeout(() => {
+            const initialClasses = [
+                { id: 1, name: 'Class A', students: 12, schedule: '월, 수, 금', time: '14:00 - 15:30', color: 'bg-yellow-200' },
+                { id: 2, name: 'Class B', students: 8, schedule: '화, 목', time: '16:00 - 17:30', color: 'bg-blue-200' },
+                { id: 3, name: 'Class C', students: 15, schedule: '월, 수, 금', time: '16:00 - 17:30', color: 'bg-green-200' },
+                { id: 4, name: '심화반', students: 5, schedule: '토', time: '10:00 - 13:00', color: 'bg-purple-200' },
+            ];
+            setClasses(initialClasses);
+            localStorage.setItem('classes', JSON.stringify(initialClasses));
+            setLoading(false);
+        }, 1000);
+    };
+
+    // Calculate student count for each class
+    const getStudentCount = (className) => {
+        const savedStudents = localStorage.getItem('students');
+        if (!savedStudents) return 0;
+        try {
+            const students = JSON.parse(savedStudents);
+            return students.filter(s => s.className === className).length;
+        } catch (e) {
+            return 0;
+        }
+    };
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
@@ -110,7 +177,7 @@ const ClassList = () => {
                                     <div>
                                         <h3 className="text-2xl font-black text-black uppercase">{cls.name}</h3>
                                         <div className="flex items-center mt-2 font-bold text-black/70">
-                                            <Users className="w-4 h-4 mr-2" /> {cls.students}명
+                                            <Users className="w-4 h-4 mr-2" /> {getStudentCount(cls.name)}명
                                         </div>
                                     </div>
                                     <div className="flex gap-2">

@@ -1,17 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, Calendar, CheckSquare, X, Save, ChevronLeft, ChevronRight, BarChart2, FileText, Clock } from 'lucide-react';
+import { Search, Filter, Calendar, CheckSquare, X, Save, ChevronLeft, ChevronRight, BarChart2, FileText, Clock, Copy, Clipboard, Users, Plus } from 'lucide-react';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
 
-// Mock Data for Students
-const MOCK_STUDENTS = [
-    { id: 1, studentId: 'std001', name: '김철수', className: '초등A반', curriculumStatus: '등록완료', curriculumName: 'Standard Beginner', weeklyProgress: 85 },
-    { id: 2, studentId: 'std002', name: '이영희', className: '초등A반', curriculumStatus: '미등록', curriculumName: '-', weeklyProgress: 0 },
-    { id: 3, studentId: 'std003', name: '박지성', className: '중등B반', curriculumStatus: '등록완료', curriculumName: 'Intensive TOEIC', weeklyProgress: 92 },
-    { id: 4, studentId: 'std004', name: '손흥민', className: '중등B반', curriculumStatus: '등록완료', curriculumName: 'Elementary Grade 3', weeklyProgress: 78 },
-    { id: 5, studentId: 'std005', name: '김연아', className: '고등C반', curriculumStatus: '등록완료', curriculumName: 'Advanced Grammar', weeklyProgress: 95 },
-];
+
 
 // Mock Data for Learning Records
 const MOCK_RECORDS = [
@@ -194,7 +187,7 @@ const DailyManagementModal = ({ isOpen, onClose, student }) => {
 };
 
 const ProgressManagement = () => {
-    const [students, setStudents] = useState(MOCK_STUDENTS);
+    const [students, setStudents] = useState([]);
     const [filterClass, setFilterClass] = useState('All');
     const [searchTerm, setSearchTerm] = useState('');
 
@@ -205,28 +198,135 @@ const ProgressManagement = () => {
     const [selectedStudent, setSelectedStudent] = useState(null);
     const [selectedStudentIds, setSelectedStudentIds] = useState([]);
 
+    // Load students from localStorage
+    useEffect(() => {
+        loadStudents();
+
+        // Listen for storage changes from other tabs
+        const handleStorageChange = (e) => {
+            if (e.key === 'students') {
+                loadStudents();
+            }
+        };
+
+        // Listen for custom events from same tab
+        const handleLocalUpdate = () => {
+            loadStudents();
+        };
+
+        window.addEventListener('storage', handleStorageChange);
+        window.addEventListener('localStorageUpdated', handleLocalUpdate);
+
+        return () => {
+            window.removeEventListener('storage', handleStorageChange);
+            window.removeEventListener('localStorageUpdated', handleLocalUpdate);
+        };
+    }, []);
+
+    const loadStudents = () => {
+        const savedStudents = localStorage.getItem('students');
+        if (savedStudents) {
+            try {
+                const parsed = JSON.parse(savedStudents);
+                setStudents(parsed);
+            } catch (e) {
+                console.error('Failed to parse students:', e);
+                setStudents([]);
+            }
+        } else {
+            setStudents([]);
+        }
+    };
+
+    // Curriculum Management Handlers
+    const handleCopyCurriculum = () => {
+        if (selectedStudentIds.length === 0) {
+            alert('복사할 학생을 선택해주세요.');
+            return;
+        }
+        if (selectedStudentIds.length > 1) {
+            alert('한 명의 학생만 선택해주세요.');
+            return;
+        }
+        const student = students.find(s => s.id === selectedStudentIds[0]);
+        const curriculumKey = `curriculums_${student.id}`;
+        const curriculums = localStorage.getItem(curriculumKey);
+
+        if (!curriculums || curriculums === '[]') {
+            alert('복사할 커리큘럼이 없습니다.');
+            return;
+        }
+
+        localStorage.setItem('copied_curriculum', curriculums);
+        alert('커리큘럼이 복사되었습니다.');
+    };
+
+    const handlePasteCurriculum = () => {
+        if (selectedStudentIds.length === 0) {
+            alert('붙여넣기할 학생을 선택해주세요.');
+            return;
+        }
+
+        const copiedData = localStorage.getItem('copied_curriculum');
+        if (!copiedData) {
+            alert('복사된 커리큘럼이 없습니다.');
+            return;
+        }
+
+        selectedStudentIds.forEach(studentId => {
+            const curriculumKey = `curriculums_${studentId}`;
+            localStorage.setItem(curriculumKey, copiedData);
+        });
+
+        alert(`${selectedStudentIds.length}명의 학생에게 커리큘럼이 붙여넣기 되었습니다.`);
+    };
+
+    const handleBulkRegister = () => {
+        alert('대량 등록 기능은 준비 중입니다.');
+    };
+
+    const handleNewCurriculum = () => {
+        if (selectedStudentIds.length === 0) {
+            alert('커리큘럼을 등록할 학생을 선택해주세요.');
+            return;
+        }
+        if (selectedStudentIds.length > 1) {
+            alert('한 명의 학생만 선택해주세요.');
+            return;
+        }
+        const student = students.find(s => s.id === selectedStudentIds[0]);
+        openClassLogModal(student);
+    };
+
     // Filter Logic
     const filteredStudents = students.filter(student => {
         const matchesClass = filterClass === 'All' || student.className === filterClass;
         const matchesSearch = student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            student.studentId.toLowerCase().includes(searchTerm.toLowerCase());
+            (student.studentId && student.studentId.toLowerCase().includes(searchTerm.toLowerCase()));
         return matchesClass && matchesSearch;
     });
 
-    const uniqueClasses = ['All', ...new Set(students.map(s => s.className))];
+    const uniqueClasses = ['All', ...new Set(students.map(s => s.className).filter(Boolean))];
 
     const openRecordModal = (student) => {
-        setSelectedStudent(student);
+        // Reload latest student data
+        const latestStudents = JSON.parse(localStorage.getItem('students') || '[]');
+        const latestStudent = latestStudents.find(s => s.id === student.id) || student;
+        setSelectedStudent(latestStudent);
         setIsRecordModalOpen(true);
     };
 
     const openDailyModal = (student) => {
-        setSelectedStudent(student);
+        const latestStudents = JSON.parse(localStorage.getItem('students') || '[]');
+        const latestStudent = latestStudents.find(s => s.id === student.id) || student;
+        setSelectedStudent(latestStudent);
         setIsDailyModalOpen(true);
     };
 
     const openClassLogModal = (student) => {
-        setSelectedStudent(student);
+        const latestStudents = JSON.parse(localStorage.getItem('students') || '[]');
+        const latestStudent = latestStudents.find(s => s.id === student.id) || student;
+        setSelectedStudent(latestStudent);
         setIsClassLogModalOpen(true);
     };
 
@@ -250,6 +350,36 @@ const ProgressManagement = () => {
                 <div>
                     <h1 className="text-3xl font-black text-black uppercase italic">진도 관리</h1>
                     <p className="text-slate-600 font-bold font-mono">학생들의 학습 현황을 확인하고 관리하세요</p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                    <Button
+                        onClick={handleCopyCurriculum}
+                        className="bg-blue-500 text-white hover:bg-blue-600 border-black shadow-neo flex items-center gap-2"
+                    >
+                        <Copy className="w-4 h-4" />
+                        복사
+                    </Button>
+                    <Button
+                        onClick={handlePasteCurriculum}
+                        className="bg-blue-500 text-white hover:bg-blue-600 border-black shadow-neo flex items-center gap-2"
+                    >
+                        <Clipboard className="w-4 h-4" />
+                        붙여넣기
+                    </Button>
+                    <Button
+                        onClick={handleBulkRegister}
+                        className="bg-purple-500 text-white hover:bg-purple-600 border-black shadow-neo flex items-center gap-2"
+                    >
+                        <Users className="w-4 h-4" />
+                        대량 등록
+                    </Button>
+                    <Button
+                        onClick={handleNewCurriculum}
+                        className="bg-green-500 text-white hover:bg-green-600 border-black shadow-neo flex items-center gap-2"
+                    >
+                        <Plus className="w-4 h-4" />
+                        새 커리큘럼 등록
+                    </Button>
                 </div>
             </div>
 
@@ -290,14 +420,18 @@ const ProgressManagement = () => {
                         <thead>
                             <tr className="bg-black text-white uppercase text-sm font-black">
                                 <th className="p-3 w-12 text-center">
-                                    <input
-                                        type="checkbox"
-                                        className="w-4 h-4 cursor-pointer"
-                                        onChange={toggleSelectAll}
-                                        checked={filteredStudents.length > 0 && selectedStudentIds.length === filteredStudents.length}
-                                    />
+                                    <button
+                                        onClick={toggleSelectAll}
+                                        className={`w-8 h-8 border-2 border-white font-black text-xs transition-all ${filteredStudents.length > 0 && selectedStudentIds.length === filteredStudents.length
+                                                ? 'bg-green-300 text-black'
+                                                : 'bg-transparent text-white hover:bg-white/20'
+                                            }`}
+                                    >
+                                        {filteredStudents.length > 0 && selectedStudentIds.length === filteredStudents.length ? '✓' : ''}
+                                    </button>
                                 </th>
                                 <th className="p-3 border-r-2 border-white w-16 text-center">No.</th>
+                                <th className="p-3 border-r-2 border-white w-24 text-center">반</th>
                                 <th className="p-3 border-r-2 border-white w-32">아이디(이름)</th>
                                 <th className="p-3 border-r-2 border-white text-center">커리큘럼 등록 현황</th>
                                 <th className="p-3 border-r-2 border-white text-center">학습평가</th>
@@ -307,19 +441,27 @@ const ProgressManagement = () => {
                         </thead>
                         <tbody className="font-bold text-black text-sm">
                             {filteredStudents.length === 0 ? (
-                                <tr><td colSpan="7" className="p-8 text-center text-slate-500">학생이 없습니다.</td></tr>
+                                <tr><td colSpan="8" className="p-8 text-center text-slate-500">학생이 없습니다.</td></tr>
                             ) : (
                                 filteredStudents.map((student, index) => (
                                     <tr key={student.id} className="border-b-2 border-black hover:bg-yellow-50 transition-colors">
                                         <td className="p-3 text-center">
-                                            <input
-                                                type="checkbox"
-                                                className="w-4 h-4 border-2 border-black cursor-pointer"
-                                                checked={selectedStudentIds.includes(student.id)}
-                                                onChange={() => toggleSelectStudent(student.id)}
-                                            />
+                                            <button
+                                                onClick={() => toggleSelectStudent(student.id)}
+                                                className={`w-10 h-10 border-3 border-black font-black text-sm transition-all ${selectedStudentIds.includes(student.id)
+                                                    ? 'bg-green-300 shadow-neo'
+                                                    : 'bg-white hover:bg-slate-100'
+                                                    }`}
+                                            >
+                                                {selectedStudentIds.includes(student.id) ? '✓' : ''}
+                                            </button>
                                         </td>
                                         <td className="p-3 border-r-2 border-black text-center font-mono">{index + 1}</td>
+                                        <td className="p-3 border-r-2 border-black text-center">
+                                            <span className="inline-block bg-yellow-300 text-black px-3 py-1 text-xs font-black border-2 border-black shadow-sm">
+                                                {student.className || '미배정'}
+                                            </span>
+                                        </td>
                                         <td className="p-3 border-r-2 border-black">
                                             <div>{student.studentId}</div>
                                             <div className="text-xs text-slate-500">({student.name})</div>

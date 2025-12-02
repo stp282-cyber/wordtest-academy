@@ -10,6 +10,8 @@ const StudentList = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedClass, setSelectedClass] = useState('All');
     const [showAddModal, setShowAddModal] = useState(false);
+    const [isEditing, setIsEditing] = useState(false);
+    const [editingId, setEditingId] = useState(null);
 
     // Form State
     const [formData, setFormData] = useState({
@@ -17,40 +19,87 @@ const StudentList = () => {
         password: '',
         name: '',
         email: '',
-        class: 'Class A',
+        className: '',
         status: 'Active'
     });
 
-    // Mock Data
+    const [availableClasses, setAvailableClasses] = useState([]);
+
+    // Load students and classes
     useEffect(() => {
-        const savedStudents = localStorage.getItem('students');
-        if (savedStudents) {
-            setStudents(JSON.parse(savedStudents));
-            setLoading(false);
-        } else {
-            // Simulate API fetch
-            setTimeout(() => {
-                const initialStudents = [
-                    { id: 1, name: '김철수', email: 'kim@test.com', class: 'Class A', progress: 85, status: 'Active' },
-                    { id: 2, name: '이영희', email: 'lee@test.com', class: 'Class B', progress: 92, status: 'Active' },
-                    { id: 3, name: '박민수', email: 'park@test.com', class: 'Class A', progress: 78, status: 'Inactive' },
-                    { id: 4, name: '최지우', email: 'choi@test.com', class: 'Class C', progress: 65, status: 'Active' },
-                    { id: 5, name: '정우성', email: 'jung@test.com', class: 'Class B', progress: 88, status: 'Active' },
-                ];
-                setStudents(initialStudents);
-                localStorage.setItem('students', JSON.stringify(initialStudents));
-                setLoading(false);
-            }, 1000);
-        }
+        loadStudents();
+        loadClasses();
+
+        // Listen for storage changes from other tabs
+        const handleStorageChange = (e) => {
+            if (e.key === 'students') {
+                loadStudents();
+            } else if (e.key === 'classes') {
+                loadClasses();
+            }
+        };
+
+        // Listen for custom events from same tab
+        const handleLocalUpdate = () => {
+            loadStudents();
+            loadClasses();
+        };
+
+        window.addEventListener('storage', handleStorageChange);
+        window.addEventListener('localStorageUpdated', handleLocalUpdate);
+
+        return () => {
+            window.removeEventListener('storage', handleStorageChange);
+            window.removeEventListener('localStorageUpdated', handleLocalUpdate);
+        };
     }, []);
 
+    const loadStudents = () => {
+        const savedStudents = localStorage.getItem('students');
+        if (savedStudents) {
+            const parsed = JSON.parse(savedStudents);
+            // Migrate old data structure if needed
+            const migrated = parsed.map(s => ({
+                ...s,
+                studentId: s.studentId || s.id || `std${s.id}`,
+                className: s.className || s.class || '미배정',
+                curriculumStatus: s.curriculumStatus || '미등록',
+                curriculumName: s.curriculumName || '-',
+                weeklyProgress: s.weeklyProgress || s.progress || 0
+            }));
+            setStudents(migrated);
+            // Save migrated data
+            localStorage.setItem('students', JSON.stringify(migrated));
+            setLoading(false);
+        } else {
+            setStudents([]);
+            setLoading(false);
+        }
+    };
+
+    const loadClasses = () => {
+        const savedClasses = localStorage.getItem('classes');
+        if (savedClasses) {
+            try {
+                const parsed = JSON.parse(savedClasses);
+                const validClasses = parsed.filter(c => c && c.name && c.schedule);
+                setAvailableClasses(validClasses);
+            } catch (e) {
+                console.error('Failed to parse classes:', e);
+                setAvailableClasses([]);
+            }
+        } else {
+            setAvailableClasses([]);
+        }
+    };
+
     // Extract unique classes for filter
-    const classes = ['All', ...new Set(students.map(s => s.class))];
+    const classes = ['All', ...new Set(students.map(s => s.className).filter(Boolean))];
 
     const filteredStudents = students.filter(student => {
         const matchesSearch = student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             (student.email && student.email.toLowerCase().includes(searchTerm.toLowerCase()));
-        const matchesClass = selectedClass === 'All' || student.class === selectedClass;
+        const matchesClass = selectedClass === 'All' || student.className === selectedClass;
         return matchesSearch && matchesClass;
     });
 
@@ -71,29 +120,81 @@ const StudentList = () => {
             return;
         }
 
-        const newStudent = {
-            id: Date.now(), // Temporary ID
-            ...formData,
-            progress: 0 // Initial progress
-        };
+        let updatedStudents;
 
-        const updatedStudents = [...students, newStudent];
+        if (isEditing) {
+            updatedStudents = students.map(student =>
+                student.id === editingId ? {
+                    ...student,
+                    studentId: formData.id,
+                    name: formData.name,
+                    email: formData.email,
+                    password: formData.password,
+                    className: formData.className,
+                    status: formData.status
+                } : student
+            );
+            alert('학생 정보가 수정되었습니다.');
+        } else {
+            const newStudent = {
+                id: Date.now(),
+                studentId: formData.id,
+                name: formData.name,
+                email: formData.email,
+                password: formData.password,
+                className: formData.className,
+                status: formData.status,
+                progress: 0,
+                curriculumStatus: '미등록',
+                curriculumName: '-',
+                weeklyProgress: 0
+            };
+            updatedStudents = [...students, newStudent];
+            alert('학생이 추가되었습니다.');
+        }
+
         setStudents(updatedStudents);
         localStorage.setItem('students', JSON.stringify(updatedStudents));
+        window.dispatchEvent(new Event('localStorageUpdated'));
 
+        closeModal();
+    };
+
+    const handleDeleteStudent = (id) => {
+        if (window.confirm('정말 이 학생을 삭제하시겠습니까?')) {
+            const updatedStudents = students.filter(student => student.id !== id);
+            setStudents(updatedStudents);
+            localStorage.setItem('students', JSON.stringify(updatedStudents));
+            window.dispatchEvent(new Event('localStorageUpdated'));
+        }
+    };
+
+    const handleEditClick = (student) => {
+        setFormData({
+            id: student.studentId || student.id,
+            password: student.password || '',
+            name: student.name,
+            email: student.email || '',
+            className: student.className || '',
+            status: student.status
+        });
+        setEditingId(student.id);
+        setIsEditing(true);
+        setShowAddModal(true);
+    };
+
+    const closeModal = () => {
         setShowAddModal(false);
-
-        // Reset form
+        setIsEditing(false);
+        setEditingId(null);
         setFormData({
             id: '',
             password: '',
             name: '',
             email: '',
-            class: 'Class A',
+            className: availableClasses.length > 0 ? availableClasses[0].name : '',
             status: 'Active'
         });
-
-        alert('학생이 추가되었습니다.');
     };
 
     return (
@@ -182,7 +283,7 @@ const StudentList = () => {
                                                 </div>
                                             </div>
                                         </td>
-                                        <td className="p-4 border-r-2 border-black font-mono">{student.class}</td>
+                                        <td className="p-4 border-r-2 border-black font-mono">{student.className || '미배정'}</td>
                                         <td className="p-4 border-r-2 border-black">
                                             <div className="flex items-center gap-2">
                                                 <div className="flex-1 h-3 bg-slate-200 border-2 border-black rounded-full overflow-hidden">
@@ -204,10 +305,16 @@ const StudentList = () => {
                                         </td>
                                         <td className="p-4">
                                             <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <button className="p-1 hover:bg-yellow-200 border-2 border-transparent hover:border-black transition-all">
+                                                <button
+                                                    onClick={() => handleEditClick(student)}
+                                                    className="p-1 hover:bg-yellow-200 border-2 border-transparent hover:border-black transition-all"
+                                                >
                                                     <Edit className="w-4 h-4" />
                                                 </button>
-                                                <button className="p-1 hover:bg-red-200 border-2 border-transparent hover:border-black transition-all">
+                                                <button
+                                                    onClick={() => handleDeleteStudent(student.id)}
+                                                    className="p-1 hover:bg-red-200 border-2 border-transparent hover:border-black transition-all"
+                                                >
                                                     <Trash2 className="w-4 h-4" />
                                                 </button>
                                             </div>
@@ -225,8 +332,8 @@ const StudentList = () => {
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
                     <Card className="w-full max-w-md bg-white border-4 border-black shadow-neo-lg p-0">
                         <div className="p-4 border-b-4 border-black bg-blue-300 flex justify-between items-center">
-                            <h3 className="font-black uppercase text-xl">학생 추가</h3>
-                            <button onClick={() => setShowAddModal(false)}>
+                            <h3 className="font-black uppercase text-xl">{isEditing ? '학생 정보 수정' : '학생 추가'}</h3>
+                            <button onClick={closeModal}>
                                 <X className="w-6 h-6" />
                             </button>
                         </div>
@@ -264,14 +371,15 @@ const StudentList = () => {
                             <div>
                                 <label className="block text-sm font-black mb-1 uppercase">반 배정</label>
                                 <select
-                                    name="class"
-                                    value={formData.class}
+                                    name="className"
+                                    value={formData.className}
                                     onChange={handleInputChange}
                                     className="w-full p-3 border-2 border-black font-bold focus:outline-none focus:shadow-neo-sm"
                                 >
-                                    <option value="Class A">Class A</option>
-                                    <option value="Class B">Class B</option>
-                                    <option value="Class C">Class C</option>
+                                    <option value="">미배정</option>
+                                    {availableClasses.map(cls => (
+                                        <option key={cls.id} value={cls.name}>{cls.name}</option>
+                                    ))}
                                 </select>
                             </div>
                             <div>
@@ -288,7 +396,7 @@ const StudentList = () => {
                             </div>
                             <div className="pt-4">
                                 <Button type="submit" className="w-full bg-black text-white hover:bg-slate-800 shadow-neo">
-                                    추가하기
+                                    {isEditing ? '수정하기' : '추가하기'}
                                 </Button>
                             </div>
                         </form>
