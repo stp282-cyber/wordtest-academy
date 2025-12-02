@@ -10,8 +10,8 @@ const Reports = () => {
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                    <h1 className="text-3xl font-black text-black uppercase italic">Analytics & Reports</h1>
-                    <p className="text-slate-600 font-bold font-mono">Track student performance and progress</p>
+                    <h1 className="text-3xl font-black text-black uppercase italic">학원 리포트</h1>
+                    <p className="text-slate-600 font-bold font-mono">학생들의 성적과 진도를 확인하세요</p>
                 </div>
                 <div className="flex gap-3">
                     <select
@@ -19,12 +19,12 @@ const Reports = () => {
                         onChange={(e) => setTimeRange(e.target.value)}
                         className="px-4 py-2 border-2 border-black font-bold focus:outline-none focus:shadow-neo-sm bg-white"
                     >
-                        <option value="week">This Week</option>
-                        <option value="month">This Month</option>
-                        <option value="semester">This Semester</option>
+                        <option value="week">이번 주</option>
+                        <option value="month">이번 달</option>
+                        <option value="semester">이번 학기</option>
                     </select>
                     <Button className="bg-black text-white hover:bg-slate-800 shadow-neo hover:shadow-neo-lg">
-                        <Download className="w-5 h-5 mr-2" /> Export PDF
+                        <Download className="w-5 h-5 mr-2" /> PDF 내보내기
                     </Button>
                 </div>
             </div>
@@ -32,24 +32,24 @@ const Reports = () => {
             {/* Overview Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <Card className="border-4 border-black bg-blue-200 shadow-neo p-6">
-                    <h3 className="font-black uppercase text-sm mb-2">Average Score</h3>
+                    <h3 className="font-black uppercase text-sm mb-2">평균 점수</h3>
                     <div className="text-4xl font-black mb-2">85.4</div>
                     <div className="flex items-center text-sm font-bold text-green-700">
-                        <TrendingUp className="w-4 h-4 mr-1" /> +2.5% vs last week
+                        <TrendingUp className="w-4 h-4 mr-1" /> +2.5% 지난주 대비
                     </div>
                 </Card>
                 <Card className="border-4 border-black bg-green-200 shadow-neo p-6">
-                    <h3 className="font-black uppercase text-sm mb-2">Completion Rate</h3>
+                    <h3 className="font-black uppercase text-sm mb-2">완료율</h3>
                     <div className="text-4xl font-black mb-2">92%</div>
                     <div className="flex items-center text-sm font-bold text-green-700">
-                        <TrendingUp className="w-4 h-4 mr-1" /> +5.0% vs last week
+                        <TrendingUp className="w-4 h-4 mr-1" /> +5.0% 지난주 대비
                     </div>
                 </Card>
                 <Card className="border-4 border-black bg-yellow-200 shadow-neo p-6">
-                    <h3 className="font-black uppercase text-sm mb-2">Active Students</h3>
+                    <h3 className="font-black uppercase text-sm mb-2">활동중인 학생</h3>
                     <div className="text-4xl font-black mb-2">45</div>
                     <div className="flex items-center text-sm font-bold text-slate-600">
-                        <Users className="w-4 h-4 mr-1" /> Total: 48
+                        <Users className="w-4 h-4 mr-1" /> 전체: 48명
                     </div>
                 </Card>
             </div>
@@ -57,7 +57,7 @@ const Reports = () => {
             {/* Charts Placeholder */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <Card className="border-4 border-black shadow-neo bg-white min-h-[300px] flex flex-col">
-                    <h3 className="font-black uppercase text-lg mb-4 border-b-2 border-black pb-2">Score Distribution</h3>
+                    <h3 className="font-black uppercase text-lg mb-4 border-b-2 border-black pb-2">점수 분포</h3>
                     <div className="flex-1 flex items-end justify-around px-4 pb-4 gap-2">
                         {[30, 45, 60, 80, 55, 70, 90].map((h, i) => (
                             <div key={i} className="w-full bg-black hover:bg-blue-500 transition-colors relative group" style={{ height: `${h}%` }}>
@@ -68,20 +68,20 @@ const Reports = () => {
                         ))}
                     </div>
                     <div className="flex justify-between text-xs font-bold text-slate-500 mt-2">
-                        <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+                        <span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span><span>일</span>
                     </div>
                 </Card>
 
                 <Card className="border-4 border-black shadow-neo bg-white min-h-[300px]">
-                    <h3 className="font-black uppercase text-lg mb-4 border-b-2 border-black pb-2">Top Performing Students</h3>
+                    <h3 className="font-black uppercase text-lg mb-4 border-b-2 border-black pb-2">우수 학생</h3>
                     <div className="space-y-2">
                         {[1, 2, 3, 4, 5].map((i) => (
                             <div key={i} className="flex items-center justify-between p-3 border-2 border-black hover:bg-slate-50 transition-colors">
                                 <div className="flex items-center">
                                     <span className={`w-6 h-6 flex items-center justify-center font-black mr-3 ${i <= 3 ? 'text-yellow-500' : 'text-slate-400'}`}>#{i}</span>
-                                    <span className="font-bold">Student Name {i}</span>
+                                    <span className="font-bold">학생 {i}</span>
                                 </div>
-                                <span className="font-mono font-bold bg-slate-100 px-2 py-1 rounded">9{9 - i} pts</span>
+                                <span className="font-mono font-bold bg-slate-100 px-2 py-1 rounded">9{9 - i}점</span>
                             </div>
                         ))}
                     </div>

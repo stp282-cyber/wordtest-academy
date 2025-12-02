@@ -9,7 +9,7 @@ const SidebarItem = ({ icon: Icon, label, to, active }) => (
         className={`
       flex items-center px-4 py-3 mb-3 border-2 transition-all duration-200 group font-bold
       ${active
-                ? 'bg-primary border-black text-white shadow-neo translate-x-1 -translate-y-1'
+                ? 'bg-primary border-black text-white shadow-neo -translate-y-1'
                 : 'bg-white border-transparent hover:border-black hover:shadow-neo hover:-translate-y-1 text-slate-600 hover:text-black'}
     `}
     >
@@ -20,7 +20,7 @@ const SidebarItem = ({ icon: Icon, label, to, active }) => (
 );
 
 const MainLayout = ({ menuItems }) => {
-    const [sidebarOpen, setSidebarOpen] = useState(true);
+    const [sidebarOpen, setSidebarOpen] = useState(false);
     const [notificationsOpen, setNotificationsOpen] = useState(false);
     const location = useLocation();
     const { logout, user } = useAuth();
@@ -43,7 +43,7 @@ const MainLayout = ({ menuItems }) => {
             >
                 <div className="h-full flex flex-col p-6">
                     <div className="flex items-center justify-between mb-8">
-                        <Link to="/student" className="flex items-center hover:opacity-80 transition-opacity">
+                        <Link to={user?.role === 'ACADEMY_ADMIN' ? '/academy-admin' : '/student'} className="flex items-center hover:opacity-80 transition-opacity">
                             <div className="w-10 h-10 bg-black text-white flex items-center justify-center font-black text-xl border-2 border-white shadow-sm mr-3">
                                 W
                             </div>
@@ -54,7 +54,7 @@ const MainLayout = ({ menuItems }) => {
                         </button>
                     </div>
 
-                    <nav className="flex-1 overflow-y-auto overflow-x-hidden space-y-2 no-scrollbar">
+                    <nav className="flex-1 overflow-y-auto space-y-2 no-scrollbar py-1">
                         {menuItems.map((item) => (
                             <SidebarItem
                                 key={item.to}
@@ -86,6 +86,17 @@ const MainLayout = ({ menuItems }) => {
                     >
                         <Menu className="w-6 h-6" />
                     </button>
+
+                    {/* Mobile Logo */}
+                    <Link
+                        to={user?.role === 'ACADEMY_ADMIN' ? '/academy-admin' : '/student'}
+                        className="lg:hidden flex items-center absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
+                    >
+                        <div className="w-8 h-8 bg-black text-white flex items-center justify-center font-black text-lg border-2 border-white shadow-sm mr-2">
+                            W
+                        </div>
+                        <span className="text-xl font-display font-black text-black tracking-tighter">WORDTEST</span>
+                    </Link>
 
                     <div className="flex items-center ml-auto space-x-4">
                         {/* Notification Dropdown */}

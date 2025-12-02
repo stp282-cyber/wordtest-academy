@@ -26,22 +26,22 @@ const WordbookList = () => {
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                    <h1 className="text-3xl font-black text-black uppercase italic">Wordbooks</h1>
-                    <p className="text-slate-600 font-bold font-mono">Manage vocabulary content</p>
+                    <h1 className="text-3xl font-black text-black uppercase italic">단어장 관리</h1>
+                    <p className="text-slate-600 font-bold font-mono">학습 콘텐츠를 관리하세요</p>
                 </div>
                 <div className="flex gap-3">
                     <Button variant="secondary" className="border-2 border-black shadow-neo hover:shadow-neo-lg bg-white">
-                        <Upload className="w-5 h-5 mr-2" /> Import Excel
+                        <Upload className="w-5 h-5 mr-2" /> 엑셀 업로드
                     </Button>
                     <Button className="bg-black text-white hover:bg-slate-800 shadow-neo hover:shadow-neo-lg">
-                        <Plus className="w-5 h-5 mr-2" /> New Wordbook
+                        <Plus className="w-5 h-5 mr-2" /> 새 단어장
                     </Button>
                 </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {loading ? (
-                    <div className="col-span-full text-center p-12 font-bold text-slate-500">Loading wordbooks...</div>
+                    <div className="col-span-full text-center p-12 font-bold text-slate-500">단어장을 불러오는 중...</div>
                 ) : (
                     wordbooks.map((wb) => (
                         <Link key={wb.id} to={`/academy-admin/wordbooks/${wb.id}`}>
@@ -54,7 +54,7 @@ const WordbookList = () => {
                                         px-2 py-1 text-xs font-black uppercase border-2 border-black shadow-neo-sm
                                         ${wb.level === 'Beginner' ? 'bg-green-300' : wb.level === 'Intermediate' ? 'bg-blue-300' : 'bg-red-300'}
                                     `}>
-                                        {wb.level}
+                                        {wb.level === 'Beginner' ? '초급' : wb.level === 'Intermediate' ? '중급' : '고급'}
                                     </span>
                                 </div>
 
@@ -64,7 +64,7 @@ const WordbookList = () => {
 
                                 <div className="mt-auto pt-4 border-t-2 border-slate-100 flex items-center justify-between text-sm font-bold text-slate-500">
                                     <span className="flex items-center">
-                                        <FileText className="w-4 h-4 mr-1" /> {wb.count} words
+                                        <FileText className="w-4 h-4 mr-1" /> {wb.count} 단어
                                     </span>
                                     <span className="font-mono text-xs">{wb.created}</span>
                                 </div>
@@ -78,7 +78,7 @@ const WordbookList = () => {
                     <div className="w-16 h-16 rounded-full border-4 border-current flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                         <Plus className="w-8 h-8" />
                     </div>
-                    <span className="font-black uppercase text-lg">Create New</span>
+                    <span className="font-black uppercase text-lg">새 단어장 만들기</span>
                 </button>
             </div>
         </div>

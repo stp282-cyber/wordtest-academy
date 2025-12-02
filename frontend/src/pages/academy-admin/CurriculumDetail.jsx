@@ -88,7 +88,7 @@ const CurriculumDetail = () => {
         }
     };
 
-    if (loading) return <div className="p-12 text-center font-bold">Loading curriculum...</div>;
+    if (loading) return <div className="p-12 text-center font-bold">커리큘럼 정보를 불러오는 중...</div>;
 
     return (
         <div className="space-y-6 relative">
@@ -106,7 +106,7 @@ const CurriculumDetail = () => {
                     </div>
                 </div>
                 <Button className="bg-green-400 text-black hover:bg-green-500 shadow-neo hover:shadow-neo-lg border-black">
-                    <Save className="w-5 h-5 mr-2" /> Save Changes
+                    <Save className="w-5 h-5 mr-2" /> 변경사항 저장
                 </Button>
             </div>
 
@@ -116,17 +116,17 @@ const CurriculumDetail = () => {
                     <Card className="border-4 border-black shadow-neo-lg bg-white p-0 overflow-hidden">
                         <div className="p-4 border-b-4 border-black bg-purple-200 flex justify-between items-center">
                             <h3 className="font-black uppercase text-lg flex items-center">
-                                <GripVertical className="w-5 h-5 mr-2" /> Learning Path ({items.length} Steps)
+                                <GripVertical className="w-5 h-5 mr-2" /> 학습 경로 ({items.length} 단계)
                             </h3>
                             <Button size="sm" className="bg-black text-white hover:bg-slate-800" onClick={() => setShowAddModal(true)}>
-                                <Plus className="w-4 h-4 mr-1" /> Add Wordbook
+                                <Plus className="w-4 h-4 mr-1" /> 단어장 추가
                             </Button>
                         </div>
 
                         <div className="divide-y-2 divide-black">
                             {items.length === 0 ? (
                                 <div className="p-8 text-center text-slate-500 font-bold">
-                                    No wordbooks added yet. Click "Add Wordbook" to start building the curriculum.
+                                    등록된 단어장이 없습니다. "단어장 추가" 버튼을 눌러 커리큘럼을 만들어보세요.
                                 </div>
                             ) : (
                                 items.map((item, index) => (
@@ -166,20 +166,20 @@ const CurriculumDetail = () => {
                                                 {/* Settings Grid */}
                                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 bg-slate-100 p-3 border-2 border-black/10 rounded">
                                                     <div>
-                                                        <label className="block text-xs font-black uppercase text-slate-500 mb-1">Test Type</label>
+                                                        <label className="block text-xs font-black uppercase text-slate-500 mb-1">시험 방식</label>
                                                         <select
                                                             value={item.settings.testType}
                                                             onChange={(e) => handleSettingChange(index, 'testType', e.target.value)}
                                                             className="w-full p-1 border-2 border-black text-sm font-bold focus:outline-none"
                                                         >
-                                                            <option value="typing">Typing (KOR)</option>
-                                                            <option value="scramble_select">Scramble (Select)</option>
-                                                            <option value="scramble_typing">Scramble (Type)</option>
-                                                            <option value="choice">Multiple Choice</option>
+                                                            <option value="typing">타자 연습 (한글)</option>
+                                                            <option value="scramble_select">순서 섞기 (선택)</option>
+                                                            <option value="scramble_typing">순서 섞기 (타자)</option>
+                                                            <option value="choice">객관식</option>
                                                         </select>
                                                     </div>
                                                     <div>
-                                                        <label className="block text-xs font-black uppercase text-slate-500 mb-1">Word Count</label>
+                                                        <label className="block text-xs font-black uppercase text-slate-500 mb-1">단어 수</label>
                                                         <input
                                                             type="number"
                                                             value={item.settings.wordCount}
@@ -188,7 +188,7 @@ const CurriculumDetail = () => {
                                                         />
                                                     </div>
                                                     <div>
-                                                        <label className="block text-xs font-black uppercase text-slate-500 mb-1">Pass Score</label>
+                                                        <label className="block text-xs font-black uppercase text-slate-500 mb-1">통과 점수</label>
                                                         <div className="flex items-center">
                                                             <input
                                                                 type="number"
@@ -212,11 +212,11 @@ const CurriculumDetail = () => {
                 {/* Sidebar Info */}
                 <div className="space-y-6">
                     <Card className="border-4 border-black shadow-neo bg-white">
-                        <h3 className="font-black uppercase text-lg mb-4 border-b-2 border-black pb-2">Curriculum Info</h3>
+                        <h3 className="font-black uppercase text-lg mb-4 border-b-2 border-black pb-2">커리큘럼 정보</h3>
                         <div className="space-y-4">
-                            <Input label="Curriculum Name" value={curriculum.name} onChange={(e) => setCurriculum({ ...curriculum, name: e.target.value })} />
+                            <Input label="커리큘럼 이름" value={curriculum.name} onChange={(e) => setCurriculum({ ...curriculum, name: e.target.value })} />
                             <div>
-                                <label className="block text-sm font-black mb-1 uppercase">Description</label>
+                                <label className="block text-sm font-black mb-1 uppercase">설명</label>
                                 <textarea
                                     className="w-full p-3 border-2 border-black font-bold focus:outline-none focus:shadow-neo-sm resize-none h-32"
                                     value={curriculum.description}
@@ -227,11 +227,11 @@ const CurriculumDetail = () => {
                     </Card>
 
                     <Card className="border-4 border-black shadow-neo bg-yellow-100">
-                        <h3 className="font-black uppercase text-lg mb-2">How it works</h3>
+                        <h3 className="font-black uppercase text-lg mb-2">진행 방식</h3>
                         <ul className="list-disc list-inside space-y-2 text-sm font-bold text-slate-700">
-                            <li>Students proceed through wordbooks in order.</li>
-                            <li>Next wordbook unlocks only after passing the current one.</li>
-                            <li>You can set different test types for each stage.</li>
+                            <li>학생들은 순서대로 단어장을 학습합니다.</li>
+                            <li>현재 단어장을 통과해야 다음 단어장이 열립니다.</li>
+                            <li>각 단계별로 다른 시험 방식을 설정할 수 있습니다.</li>
                         </ul>
                     </Card>
                 </div>
@@ -242,7 +242,7 @@ const CurriculumDetail = () => {
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
                     <Card className="w-full max-w-lg bg-white border-4 border-black shadow-neo-lg p-0">
                         <div className="p-4 border-b-4 border-black bg-yellow-300 flex justify-between items-center">
-                            <h3 className="font-black uppercase text-xl">Select Wordbook</h3>
+                            <h3 className="font-black uppercase text-xl">단어장 선택</h3>
                             <button onClick={() => setShowAddModal(false)}>
                                 <Settings className="w-6 h-6 rotate-45" /> {/* Using Settings icon as Close for now or just X */}
                             </button>

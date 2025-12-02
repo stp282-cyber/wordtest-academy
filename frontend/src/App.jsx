@@ -33,12 +33,13 @@ const studentMenuItems = [
 ];
 
 const academyMenuItems = [
-    { icon: LayoutDashboard, label: 'Dashboard', to: '/academy-admin' },
-    { icon: Users, label: 'Students', to: '/academy-admin/students' },
-    { icon: BookOpen, label: 'Wordbooks', to: '/academy-admin/wordbooks' },
-    { icon: Layers, label: 'Curriculum', to: '/academy-admin/curriculums' },
-    { icon: GraduationCap, label: 'Classes', to: '/academy-admin/classes' },
-    { icon: TrendingUp, label: 'Reports', to: '/academy-admin/reports' },
+    { icon: LayoutDashboard, label: '대시보드', to: '/academy-admin' },
+    { icon: Users, label: '학생 관리', to: '/academy-admin/students' },
+    { icon: BookOpen, label: '단어장 관리', to: '/academy-admin/wordbooks' },
+    { icon: Layers, label: '커리큘럼', to: '/academy-admin/curriculums' },
+    { icon: GraduationCap, label: '반 관리', to: '/academy-admin/classes' },
+    { icon: TrendingUp, label: '리포트', to: '/academy-admin/reports' },
+    { icon: SettingsIcon, label: '설정', to: '/academy-admin/settings' },
 ];
 
 const superAdminMenuItems = [

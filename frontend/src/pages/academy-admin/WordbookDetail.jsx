@@ -31,7 +31,7 @@ const WordbookDetail = () => {
         }, 1000);
     }, [id]);
 
-    if (loading) return <div className="p-12 text-center font-bold">Loading wordbook details...</div>;
+    if (loading) return <div className="p-12 text-center font-bold">단어장 정보를 불러오는 중...</div>;
 
     return (
         <div className="space-y-6">
@@ -50,7 +50,7 @@ const WordbookDetail = () => {
                 </div>
                 <div className="flex gap-3">
                     <Button className="bg-green-400 text-black hover:bg-green-500 shadow-neo hover:shadow-neo-lg border-black">
-                        <Save className="w-5 h-5 mr-2" /> Save Changes
+                        <Save className="w-5 h-5 mr-2" /> 변경사항 저장
                     </Button>
                 </div>
             </div>
@@ -61,9 +61,9 @@ const WordbookDetail = () => {
                 <div className="lg:col-span-2 space-y-4">
                     <Card className="border-4 border-black shadow-neo-lg bg-white p-0 overflow-hidden">
                         <div className="p-4 border-b-4 border-black bg-slate-100 flex justify-between items-center">
-                            <h3 className="font-black uppercase text-lg">Word List ({words.length})</h3>
+                            <h3 className="font-black uppercase text-lg">단어 목록 ({words.length})</h3>
                             <Button size="sm" className="bg-black text-white hover:bg-slate-800">
-                                <Plus className="w-4 h-4 mr-1" /> Add Word
+                                <Plus className="w-4 h-4 mr-1" /> 단어 추가
                             </Button>
                         </div>
 
@@ -75,7 +75,7 @@ const WordbookDetail = () => {
                                     </div>
                                     <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div>
-                                            <label className="text-xs font-bold text-slate-500 uppercase">English</label>
+                                            <label className="text-xs font-bold text-slate-500 uppercase">영어</label>
                                             <input
                                                 type="text"
                                                 value={word.english}
@@ -85,7 +85,7 @@ const WordbookDetail = () => {
                                             <p className="text-sm text-slate-600 mt-1 italic">"{word.example}"</p>
                                         </div>
                                         <div>
-                                            <label className="text-xs font-bold text-slate-500 uppercase">Korean</label>
+                                            <label className="text-xs font-bold text-slate-500 uppercase">한글 뜻</label>
                                             <input
                                                 type="text"
                                                 value={word.korean}
@@ -111,22 +111,22 @@ const WordbookDetail = () => {
                 {/* Sidebar Info */}
                 <div className="space-y-6">
                     <Card className="border-4 border-black shadow-neo bg-white">
-                        <h3 className="font-black uppercase text-lg mb-4 border-b-2 border-black pb-2">Settings</h3>
+                        <h3 className="font-black uppercase text-lg mb-4 border-b-2 border-black pb-2">설정</h3>
                         <div className="space-y-4">
-                            <Input label="Title" value={wordbook.title} />
+                            <Input label="단어장 제목" value={wordbook.title} />
                             <div>
-                                <label className="block text-sm font-black mb-1 uppercase">Description</label>
+                                <label className="block text-sm font-black mb-1 uppercase">설명</label>
                                 <textarea
                                     className="w-full p-3 border-2 border-black font-bold focus:outline-none focus:shadow-neo-sm resize-none h-24"
                                     value={wordbook.description}
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-black mb-1 uppercase">Level</label>
+                                <label className="block text-sm font-black mb-1 uppercase">난이도</label>
                                 <select className="w-full p-3 border-2 border-black font-bold focus:outline-none focus:shadow-neo-sm bg-white">
-                                    <option>Beginner</option>
-                                    <option>Intermediate</option>
-                                    <option>Advanced</option>
+                                    <option>초급</option>
+                                    <option>중급</option>
+                                    <option>고급</option>
                                 </select>
                             </div>
                         </div>

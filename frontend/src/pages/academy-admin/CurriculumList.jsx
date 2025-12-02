@@ -45,17 +45,17 @@ const CurriculumList = () => {
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                    <h1 className="text-3xl font-black text-black uppercase italic">Curriculum Management</h1>
-                    <p className="text-slate-600 font-bold font-mono">Design learning paths for your students</p>
+                    <h1 className="text-3xl font-black text-black uppercase italic">커리큘럼 관리</h1>
+                    <p className="text-slate-600 font-bold font-mono">학생들을 위한 학습 경로를 설계하세요</p>
                 </div>
                 <Button className="bg-black text-white hover:bg-slate-800 shadow-neo hover:shadow-neo-lg">
-                    <Plus className="w-5 h-5 mr-2" /> Create Curriculum
+                    <Plus className="w-5 h-5 mr-2" /> 새 커리큘럼
                 </Button>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {loading ? (
-                    <div className="col-span-full text-center p-12 font-bold text-slate-500">Loading curriculums...</div>
+                    <div className="col-span-full text-center p-12 font-bold text-slate-500">커리큘럼을 불러오는 중...</div>
                 ) : (
                     curriculums.map((curr) => (
                         <Link key={curr.id} to={`/academy-admin/curriculums/${curr.id}`}>
@@ -83,9 +83,9 @@ const CurriculumList = () => {
 
                                 <div className="mt-auto pt-4 border-t-2 border-slate-100 flex items-center justify-between text-sm font-bold text-slate-500">
                                     <span className="flex items-center">
-                                        <Book className="w-4 h-4 mr-1" /> {curr.wordbookCount} books
+                                        <Book className="w-4 h-4 mr-1" /> {curr.wordbookCount} 단어장
                                     </span>
-                                    <span className="font-mono text-xs">{curr.studentCount} students</span>
+                                    <span className="font-mono text-xs">{curr.studentCount}명 수강중</span>
                                 </div>
                             </Card>
                         </Link>
@@ -97,7 +97,7 @@ const CurriculumList = () => {
                     <div className="w-16 h-16 rounded-full border-4 border-current flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                         <Plus className="w-8 h-8" />
                     </div>
-                    <span className="font-black uppercase text-lg">Create New</span>
+                    <span className="font-black uppercase text-lg">새 커리큘럼 만들기</span>
                 </button>
             </div>
         </div>

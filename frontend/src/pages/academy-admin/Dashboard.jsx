@@ -61,31 +61,31 @@ const Dashboard = () => {
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white border-4 border-black p-6 shadow-neo-lg">
                 <div>
-                    <h1 className="text-4xl font-black text-black mb-1 uppercase italic">Academy Dashboard</h1>
-                    <p className="text-slate-600 font-bold font-mono">Manage your students and curriculum</p>
+                    <h1 className="text-4xl font-black text-black mb-1 uppercase italic">학원 대시보드</h1>
+                    <p className="text-slate-600 font-bold font-mono">학생들과 커리큘럼을 관리하세요</p>
                 </div>
                 <div className="flex gap-3">
                     <Button variant="secondary" className="border-2 border-black shadow-neo hover:shadow-neo-lg">
-                        Manage Students
+                        학생 관리
                     </Button>
                     <Button className="shadow-neo hover:shadow-neo-lg bg-black text-white hover:bg-slate-800 border-white">
-                        <Plus className="w-5 h-5 mr-2" /> New Class
+                        <Plus className="w-5 h-5 mr-2" /> 새 반 만들기
                     </Button>
                 </div>
             </div>
 
             {/* Stats Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                <StatCard icon={Users} label="Total Students" value={stats.totalStudents} color="bg-blue-200" />
-                <StatCard icon={GraduationCap} label="Active Classes" value={stats.activeClasses} color="bg-purple-200" />
-                <StatCard icon={BookOpen} label="Wordbooks" value={stats.wordbooks} color="bg-yellow-200" />
-                <StatCard icon={TrendingUp} label="Avg Score" value={stats.avgScore} color="bg-green-200" />
+                <StatCard icon={Users} label="총 학생 수" value={stats.totalStudents} color="bg-blue-200" />
+                <StatCard icon={GraduationCap} label="활성 반" value={stats.activeClasses} color="bg-purple-200" />
+                <StatCard icon={BookOpen} label="단어장" value={stats.wordbooks} color="bg-yellow-200" />
+                <StatCard icon={TrendingUp} label="평균 점수" value={stats.avgScore} color="bg-green-200" />
             </div>
 
             {/* Recent Activity & Quick Actions */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <div className="space-y-6">
-                    <h2 className="text-2xl font-black text-black uppercase border-b-4 border-black inline-block pr-4">Recent Test Results</h2>
+                    <h2 className="text-2xl font-black text-black uppercase border-b-4 border-black inline-block pr-4">최근 시험 결과</h2>
                     <div className="space-y-4">
                         {[1, 2, 3].map((item) => (
                             <div key={item} className="neo-card flex items-center p-4 hover:bg-slate-50 transition-colors">
@@ -93,7 +93,7 @@ const Dashboard = () => {
                                     S{item}
                                 </div>
                                 <div className="flex-1">
-                                    <h4 className="font-bold text-black uppercase">Student {item}</h4>
+                                    <h4 className="font-bold text-black uppercase">학생 {item}</h4>
                                     <p className="text-sm font-bold text-slate-500 font-mono">Class A • Wordbook 1</p>
                                 </div>
                                 <div className="text-right">
@@ -107,23 +107,23 @@ const Dashboard = () => {
                 </div>
 
                 <div className="space-y-6">
-                    <h2 className="text-2xl font-black text-black uppercase border-b-4 border-black inline-block pr-4">Quick Actions</h2>
+                    <h2 className="text-2xl font-black text-black uppercase border-b-4 border-black inline-block pr-4">빠른 실행</h2>
                     <div className="grid grid-cols-2 gap-4">
                         <Button variant="secondary" className="h-32 flex flex-col items-center justify-center border-2 border-black shadow-neo hover:bg-blue-50">
                             <Users className="w-8 h-8 mb-2" />
-                            Add Student
+                            학생 추가
                         </Button>
                         <Button variant="secondary" className="h-32 flex flex-col items-center justify-center border-2 border-black shadow-neo hover:bg-green-50">
                             <BookOpen className="w-8 h-8 mb-2" />
-                            Upload Wordbook
+                            단어장 업로드
                         </Button>
                         <Button variant="secondary" className="h-32 flex flex-col items-center justify-center border-2 border-black shadow-neo hover:bg-yellow-50">
                             <TrendingUp className="w-8 h-8 mb-2" />
-                            View Reports
+                            리포트 보기
                         </Button>
                         <Button variant="secondary" className="h-32 flex flex-col items-center justify-center border-2 border-black shadow-neo hover:bg-purple-50">
                             <GraduationCap className="w-8 h-8 mb-2" />
-                            Manage Curriculum
+                            커리큘럼 관리
                         </Button>
                     </div>
                 </div>
