@@ -4,6 +4,7 @@ import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import client from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
+import { getTodaySchedule } from '../../utils/scheduleUtils';
 
 const StatCard = ({ icon: Icon, label, value, color }) => (
     <Card hover className={`flex items-center p-5 border-2 border-black shadow-neo ${color}`}>
@@ -115,26 +116,50 @@ const Dashboard = () => {
             {/* Recent Activity & Progress */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-2 space-y-6">
-                    <h2 className="text-2xl font-black text-black uppercase border-b-4 border-black inline-block pr-4">Your Curriculum</h2>
+                    <h2 className="text-2xl font-black text-black uppercase border-b-4 border-black inline-block pr-4">Today's Lessons</h2>
                     <div className="space-y-4">
-                        {[1, 2, 3].map((item) => (
-                            <div key={item} className="neo-card flex items-center p-4 hover:bg-yellow-50 transition-colors cursor-pointer group relative">
-                                <div className="absolute top-0 left-0 w-full h-full border-2 border-transparent group-hover:border-black pointer-events-none transition-all" />
+                        {(() => {
+                            // Get today's schedule
+                            const todaySchedule = getTodaySchedule(user?.id);
 
-                                <div className="w-12 h-12 bg-black text-white border-2 border-black flex items-center justify-center font-black text-xl mr-4 shadow-neo-sm group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform">
-                                    {item}
+                            if (todaySchedule.length === 0) {
+                                return (
+                                    <div className="neo-card p-8 text-center">
+                                        <p className="text-slate-500 font-bold">오늘은 학습 일정이 없습니다.</p>
+                                        <p className="text-sm text-slate-400 mt-2">편안한 하루 보내세요! 😊</p>
+                                    </div>
+                                );
+                            }
+
+                            return todaySchedule.map((item, index) => (
+                                <div key={index} className="neo-card flex items-center p-4 hover:bg-yellow-50 transition-colors cursor-pointer group relative">
+                                    <div className="absolute top-0 left-0 w-full h-full border-2 border-transparent group-hover:border-black pointer-events-none transition-all" />
+
+                                    <div className="w-12 h-12 bg-black text-white border-2 border-black flex items-center justify-center font-black text-xl mr-4 shadow-neo-sm group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform">
+                                        {index + 1}
+                                    </div>
+                                    <div className="flex-1">
+                                        <h4 className="font-black text-lg text-black uppercase">{item.schedule.textbook}</h4>
+                                        <div className="flex gap-4 text-sm font-bold text-slate-600 mt-1">
+                                            <span>대단원: {item.schedule.major}</span>
+                                            <span>소단원: {item.schedule.minor}</span>
+                                        </div>
+                                        <p className="text-sm font-mono font-bold text-blue-600 mt-1">
+                                            진도: {item.schedule.wordRange} ({item.schedule.wordCount}개 단어)
+                                        </p>
+                                    </div>
+                                    <div className="text-right">
+                                        <Button
+                                            size="sm"
+                                            className="bg-green-400 hover:bg-green-500 border-black shadow-neo-sm"
+                                            onClick={() => window.location.href = `/student/test?curriculum=${item.curriculum.id}`}
+                                        >
+                                            시험 시작
+                                        </Button>
+                                    </div>
                                 </div>
-                                <div className="flex-1">
-                                    <h4 className="font-black text-lg text-black uppercase">Chapter {item}: Basic Vocabulary</h4>
-                                    <p className="text-sm font-bold text-slate-500 font-mono">20 words • 15 mins</p>
-                                </div>
-                                <div className="text-right">
-                                    <span className="inline-block px-3 py-1 border-2 border-black bg-green-400 text-black text-xs font-black uppercase shadow-neo-sm">
-                                        Completed
-                                    </span>
-                                </div>
-                            </div>
-                        ))}
+                            ));
+                        })()}
                     </div>
                 </div>
 

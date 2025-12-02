@@ -20,6 +20,7 @@ import SuperAdminAcademies from './pages/super-admin/Academies';
 import SuperAdminUsers from './pages/super-admin/Users';
 import SuperAdminSystem from './pages/super-admin/System';
 import Learning from './pages/student/Learning';
+import WordTest from './pages/student/WordTest';
 import Games from './pages/student/Games';
 import WordMatchGame from './pages/student/WordMatch';
 import SpeedTyping from './pages/student/SpeedTyping';
@@ -71,6 +72,7 @@ function App() {
                     <Route path="/student" element={<MainLayout menuItems={studentMenuItems} />}>
                         <Route index element={<StudentDashboard />} />
                         <Route path="learning" element={<Learning />} />
+                        <Route path="test" element={<WordTest />} />
                         <Route path="games" element={<Games />} />
                         <Route path="games/match" element={<WordMatchGame />} />
                         <Route path="games/typing" element={<SpeedTyping />} />

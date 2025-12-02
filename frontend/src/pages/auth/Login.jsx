@@ -54,6 +54,7 @@ const Login = () => {
                     icon={User}
                     placeholder="ENTER YOUR USERNAME"
                     error={errors.username?.message}
+                    lang="ko"
                     {...register('username', { required: 'Username is required' })}
                 />
 

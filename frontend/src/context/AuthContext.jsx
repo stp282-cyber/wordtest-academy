@@ -19,11 +19,45 @@ export const AuthProvider = ({ children }) => {
 
     const login = async (username, password) => {
         try {
-            // Adjust endpoint based on backend implementation
-            // Assuming POST /api/auth/login returns { token, user }
-            // If backend uses different route, we need to verify backend routes.
-            // Based on previous summary, auth might be in users.js or server.js?
-            // Let's assume /api/auth/login for now, will verify.
+            console.log('Login attempt:', { username, password: '***' });
+
+            // First, check if this is a student account in localStorage
+            const savedStudents = localStorage.getItem('students');
+            console.log('Saved students:', savedStudents ? 'Found' : 'Not found');
+            if (savedStudents) {
+                const students = JSON.parse(savedStudents);
+                console.log('Total students:', students.length);
+                console.log('Looking for username:', username);
+                console.log('Student IDs:', students.map(s => s.studentId));
+
+                const student = students.find(s =>
+                    (s.studentId === username || s.id === username) && s.password === password
+                );
+
+                console.log('Student found:', student ? 'Yes' : 'No');
+
+                if (student) {
+                    // Student found in localStorage
+                    const user = {
+                        id: student.id,
+                        username: student.studentId || student.id,
+                        role: 'STUDENT',
+                        full_name: student.name,
+                        email: student.email,
+                        className: student.className
+                    };
+
+                    // Create a mock token for localStorage-based auth
+                    const token = 'localStorage_student_' + student.id;
+
+                    localStorage.setItem('token', token);
+                    localStorage.setItem('user', JSON.stringify(user));
+                    setUser(user);
+                    return user;
+                }
+            }
+
+            // If not a student, try backend authentication
             const response = await client.post('/auth/login', { username, password });
             const { token, user } = response.data;
 

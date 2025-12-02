@@ -13,31 +13,7 @@ const CurriculumList = () => {
         const loadCurriculums = () => {
             const savedCurriculums = JSON.parse(localStorage.getItem('curriculums') || '[]');
 
-            // Mock Data (Optional: You can remove this if you want purely local data)
-            const mockCurriculums = [
-                {
-                    id: 1,
-                    name: 'Standard Beginner Course',
-                    description: 'A comprehensive course for absolute beginners.',
-                    wordbookCount: 5,
-                    studentCount: 12,
-                    created: '2024-11-01'
-                },
-                // ... other mocks if needed
-            ];
-
-            // Merge mock and saved (avoiding duplicates if IDs clash, though mock IDs are low)
-            // For simplicity, let's just show saved ones if any exist, or mix them.
-            // A simple way is to filter out saved ones that might have same IDs as mock, but here we assume unique IDs.
-            // Let's prioritize saved data.
-
-            // If we want to keep the "demo" feel with some data always present:
-            const combined = [...mockCurriculums, ...savedCurriculums];
-
-            // Remove duplicates by ID just in case
-            const uniqueCurriculums = Array.from(new Map(combined.map(item => [item.id, item])).values());
-
-            setCurriculums(uniqueCurriculums);
+            setCurriculums(savedCurriculums);
             setLoading(false);
         };
 

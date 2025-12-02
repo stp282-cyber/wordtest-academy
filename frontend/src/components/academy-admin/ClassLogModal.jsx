@@ -62,8 +62,13 @@ const ClassLogModal = ({ isOpen, onClose, student }) => {
     // 커리큘럼 삭제 핸들러
     const handleDeleteCurriculum = (curriculumId) => {
         if (window.confirm('이 커리큘럼을 삭제하시겠습니까?')) {
+            console.log('Deleting curriculum:', curriculumId);
+            console.log('Current curriculums:', curriculums);
             const updatedCurriculums = curriculums.filter(c => c.id !== curriculumId);
+            console.log('Updated curriculums after delete:', updatedCurriculums);
+            console.log('Storage key:', `curriculums_${student.id}`);
             saveCurriculums(updatedCurriculums);
+            alert('커리큘럼이 삭제되었습니다.');
         }
     };
 
@@ -91,8 +96,243 @@ const ClassLogModal = ({ isOpen, onClose, student }) => {
         return dates;
     };
 
+    // Helper to parse units from wordbook
+    const getUnits = (words) => {
+        const units = [];
+        if (!words || !words.length) return units;
+
+        let currentMajor = words[0].major;
+        let currentMinor = words[0].minor;
+        let startIndex = 0;
+
+        for (let i = 1; i < words.length; i++) {
+            // Check if unit changed (either major or minor changed)
+            if (words[i].major != currentMajor || words[i].minor != currentMinor) {
+                units.push({
+                    major: currentMajor,
+                    minor: currentMinor,
+                    startIndex: startIndex,
+                    endIndex: i, // exclusive
+                    count: i - startIndex,
+                    words: words.slice(startIndex, i)
+                });
+                currentMajor = words[i].major;
+                currentMinor = words[i].minor;
+                startIndex = i;
+            }
+        }
+        // Add last unit
+        units.push({
+            major: currentMajor,
+            minor: currentMinor,
+            startIndex: startIndex,
+            endIndex: words.length,
+            count: words.length - startIndex,
+            words: words.slice(startIndex, words.length)
+        });
+
+        console.log('Parsed units:', units.map(u => `${u.major}-${u.minor} (${u.count} words)`));
+        return units;
+    };
+
     // 스케줄 생성 함수
     const generateSchedule = (curriculum, weekOffset = 0) => {
+        const schedule = {};
+        const { days, startDate } = curriculum;
+
+        if (!days || !startDate) return schedule;
+
+        // Load curriculum details from localStorage to get items with settings
+        const savedCurriculums = JSON.parse(localStorage.getItem('curriculums') || '[]');
+        const curriculumDetail = savedCurriculums.find(c => c.id === curriculum.curriculumId);
+
+        if (!curriculumDetail || !curriculumDetail.items || curriculumDetail.items.length === 0) {
+            // Fallback to old behavior if no curriculum detail found
+            return generateFallbackSchedule(curriculum, weekOffset);
+        }
+
+        // Calculate which day this week offset represents
+        const startDateObj = new Date(startDate);
+        const daysFromStart = weekOffset * 7;
+
+        // Track progress through curriculum items
+        let totalDaysElapsed = 0;
+        let currentItemIndex = 0;
+        let currentWordIndexInItem = 0;
+
+        // Generate schedule for each day of the week
+        days.forEach((dayId, dayIndexInWeek) => {
+            const dayLabel = dayMap[dayId];
+            if (!dayLabel) return;
+
+            // Calculate absolute day number from start
+            const absoluteDayNumber = daysFromStart + dayIndexInWeek;
+
+            // Count how many learning days have passed
+            // Each week has days.length learning days, so:
+            // - Week 0: learning days 0 to (days.length - 1)
+            // - Week 1: learning days days.length to (2 * days.length - 1)
+            // - etc.
+            let learningDaysElapsed = weekOffset * days.length + dayIndexInWeek;
+
+            // Find which curriculum item we're on
+            let daysIntoCurrentItem = learningDaysElapsed;
+            let itemIndex = 0;
+            let wordsForToday = [];
+            let currentItem = null;
+
+            for (let i = 0; i < curriculumDetail.items.length; i++) {
+                const item = curriculumDetail.items[i];
+                const wordbookId = item.wordbookId;
+                const wordbookWords = JSON.parse(localStorage.getItem(`wordbook_words_${wordbookId}`) || '[]');
+                const settings = item.settings;
+
+                let daysNeededForItem = 0;
+                let units = [];
+
+                // Check if using unit-based pacing
+                if (['0.5_unit', '1_unit', '2_units'].includes(settings.dailyGoal)) {
+                    units = getUnits(wordbookWords);
+                    const unitsPerDay = settings.dailyGoal === '0.5_unit' ? 0.5 : (settings.dailyGoal === '2_units' ? 2 : 1);
+                    daysNeededForItem = Math.ceil(units.length / unitsPerDay);
+                } else {
+                    // Manual or fallback
+                    const dailyCount = settings.wordCount || 10;
+                    daysNeededForItem = Math.ceil(wordbookWords.length / dailyCount);
+                }
+
+                if (daysIntoCurrentItem < daysNeededForItem) {
+                    itemIndex = i;
+                    currentItem = item;
+
+                    // Calculate words for today
+                    if (units.length > 0) {
+                        const unitsPerDay = settings.dailyGoal === '0.5_unit' ? 0.5 : (settings.dailyGoal === '2_units' ? 2 : 1);
+
+                        if (settings.dailyGoal === '0.5_unit') {
+                            // 0.5 unit per day logic
+                            const unitIndex = Math.floor(daysIntoCurrentItem / 2);
+                            if (unitIndex < units.length) {
+                                const unit = units[unitIndex];
+                                const isSecondHalf = daysIntoCurrentItem % 2 === 1;
+                                const halfCount = Math.ceil(unit.count / 2);
+
+                                if (!isSecondHalf) {
+                                    wordsForToday = unit.words.slice(0, halfCount);
+                                } else {
+                                    wordsForToday = unit.words.slice(halfCount);
+                                }
+                            }
+                        } else {
+                            // 1 or 2 units per day
+                            const startUnitIndex = daysIntoCurrentItem * unitsPerDay;
+                            const endUnitIndex = Math.min(startUnitIndex + unitsPerDay, units.length);
+
+                            for (let u = startUnitIndex; u < endUnitIndex; u++) {
+                                if (units[u]) {
+                                    wordsForToday = [...wordsForToday, ...units[u].words];
+                                }
+                            }
+                        }
+                    } else {
+                        // Manual count logic
+                        const dailyCount = settings.wordCount || 10;
+                        const startWordIndex = daysIntoCurrentItem * dailyCount;
+                        const endWordIndex = Math.min(startWordIndex + dailyCount, wordbookWords.length);
+                        wordsForToday = wordbookWords.slice(startWordIndex, endWordIndex);
+                    }
+                    break;
+                } else {
+                    daysIntoCurrentItem -= daysNeededForItem;
+                }
+            }
+
+            if (!currentItem || wordsForToday.length === 0) {
+                return;
+            }
+
+            // Extract unit information
+            const uniqueMajors = [...new Set(wordsForToday.map(w => w.major).filter(Boolean))];
+            const uniqueMinors = [...new Set(wordsForToday.map(w => w.minor).filter(Boolean))];
+            const uniqueUnitNames = [...new Set(wordsForToday.map(w => w.unitName).filter(Boolean))];
+
+            const majorDisplay = uniqueMajors.length > 0 ? uniqueMajors.join(', ') : '대단원 미지정';
+            const minorDisplay = uniqueMinors.length > 0 ? uniqueMinors.join(', ') : '소단원 미지정';
+            const unitNameDisplay = uniqueUnitNames.length > 0 ? uniqueUnitNames.join(', ') : '단원명 미지정';
+
+            // Calculate date
+            const currentDayDate = new Date(startDateObj);
+            currentDayDate.setDate(currentDayDate.getDate() + learningDaysElapsed);
+            const dateDisplay = currentDayDate.toISOString().split('T')[0];
+
+            // Calculate word numbers relative to the current sub-unit
+            let numberRange;
+
+            if (wordsForToday.length > 0) {
+                const firstWord = wordsForToday[0];
+                const lastWord = wordsForToday[wordsForToday.length - 1];
+                const wordbookId = currentItem.wordbookId;
+                const wordbookWords = JSON.parse(localStorage.getItem(`wordbook_words_${wordbookId}`) || '[]');
+
+                // If we have minor units, calculate position within the specific major+minor combination
+                if (uniqueMinors.length > 0 && uniqueMajors.length > 0) {
+                    const currentMajor = uniqueMajors[0];
+                    const currentMinor = uniqueMinors[0];
+
+                    // Find all words in the same major+minor unit from the entire wordbook
+                    const wordsInSameUnit = wordbookWords.filter(w => w.major == currentMajor && w.minor == currentMinor);
+
+                    // Find the position of today's first and last word within that unit
+                    const firstWordInUnit = wordsInSameUnit.findIndex(w => w.number === firstWord.number);
+                    const lastWordInUnit = wordsInSameUnit.findIndex(w => w.number === lastWord.number);
+
+                    if (firstWordInUnit !== -1 && lastWordInUnit !== -1) {
+                        // Position within the unit (1-indexed)
+                        const startPos = firstWordInUnit + 1;
+                        const endPos = lastWordInUnit + 1;
+                        numberRange = `${startPos}~${endPos}`;
+                    } else {
+                        // Fallback: use position in entire wordbook
+                        const firstIndex = wordbookWords.findIndex(w => w.number === firstWord.number);
+                        const lastIndex = wordbookWords.findIndex(w => w.number === lastWord.number);
+                        if (firstIndex !== -1 && lastIndex !== -1) {
+                            numberRange = `${firstIndex + 1}~${lastIndex + 1}`;
+                        } else {
+                            numberRange = `1~${wordsForToday.length}`;
+                        }
+                    }
+                } else {
+                    // No minor units - use position in entire wordbook
+                    const firstIndex = wordbookWords.findIndex(w => w.number === firstWord.number);
+                    const lastIndex = wordbookWords.findIndex(w => w.number === lastWord.number);
+                    if (firstIndex !== -1 && lastIndex !== -1) {
+                        numberRange = `${firstIndex + 1}~${lastIndex + 1}`;
+                    } else {
+                        numberRange = `1~${wordsForToday.length}`;
+                    }
+                }
+            } else {
+                numberRange = '0~0';
+            }
+
+            schedule[dayLabel] = {
+                type: 'learning',
+                textbook: currentItem.title || '단어장',
+                major: majorDisplay,
+                minor: minorDisplay,
+                unitName: unitNameDisplay,
+                wordRange: numberRange,
+                wordCount: wordsForToday.length,
+                date: dateDisplay,
+                dailyGoal: currentItem.settings.dailyGoal || 'manual'
+            };
+        });
+
+        return schedule;
+    };
+
+    // Fallback schedule generation for old curriculum format
+    const generateFallbackSchedule = (curriculum, weekOffset = 0) => {
         const schedule = {};
         const { days, wordbooks, startDate } = curriculum;
 
@@ -206,7 +446,7 @@ const ClassLogModal = ({ isOpen, onClose, student }) => {
                                                     <span className="font-black text-xl italic tracking-wider">CURRICULUM</span>
                                                 </th>
                                                 {weekDays.map((day, i) => (
-                                                    <th key={day} className={`border-b-4 border-r-4 border-black p-2 ${dayColors[day].bg} min-w-[140px] transition-colors relative group`}>
+                                                    <th key={day} className={`border-b-4 border-r-4 border-black p-2 ${dayColors[day].bg} w-1/5 transition-colors relative group`}>
                                                         <div className="flex flex-col items-start relative z-10">
                                                             <span className="font-black text-3xl uppercase italic tracking-tighter transform -rotate-2 group-hover:rotate-0 transition-transform">{day}</span>
                                                             <span className="text-[10px] font-black bg-white px-1.5 py-0.5 border-2 border-black shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] mt-1">{weekDates[i]}</span>
@@ -275,20 +515,48 @@ const ClassLogModal = ({ isOpen, onClose, student }) => {
                                                                     <td key={day} className={`border-r-4 border-b-4 border-black p-2 align-top h-48 ${dayColors[day].hover} transition-colors duration-200`}>
                                                                         {scheduleItem ? (
                                                                             <div className="h-full flex flex-col justify-between bg-white p-3 border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-1 transition-all">
-                                                                                <div className="space-y-2 text-sm">
+                                                                                <div className="space-y-1.5 text-sm">
                                                                                     <div className="font-black text-base border-b border-black pb-1 mb-2">{scheduleItem.textbook}</div>
-                                                                                    <div className="flex justify-between items-center group/item">
-                                                                                        <span className="font-medium">{scheduleItem.unit}</span>
-                                                                                        <button className="text-xs text-red-500 opacity-0 group-hover/item:opacity-100 hover:text-red-700 font-bold">×</button>
-                                                                                    </div>
-                                                                                    <div className="flex justify-between items-center group/item">
-                                                                                        <span className="text-slate-600">{scheduleItem.subUnit}</span>
-                                                                                        <button className="text-xs text-red-500 opacity-0 group-hover/item:opacity-100 hover:text-red-700 font-bold">×</button>
-                                                                                    </div>
-                                                                                    <div className="flex justify-between items-center group/item bg-white border border-black p-1 shadow-sm">
-                                                                                        <span className="font-bold text-xs">진도: {scheduleItem.range}</span>
-                                                                                        <button className="text-xs text-red-500 opacity-0 group-hover/item:opacity-100 hover:text-red-700 font-bold">×</button>
-                                                                                    </div>
+
+                                                                                    {scheduleItem.major ? (
+                                                                                        <>
+                                                                                            <div className="flex justify-between items-center">
+                                                                                                <span className="text-xs text-slate-500">대단원:</span>
+                                                                                                <span className="font-bold text-sm">{scheduleItem.major}</span>
+                                                                                            </div>
+                                                                                            <div className="flex justify-between items-center">
+                                                                                                <span className="text-xs text-slate-500">소단원:</span>
+                                                                                                <span className="font-bold text-sm">{scheduleItem.minor}</span>
+                                                                                            </div>
+                                                                                            <div className="flex justify-between items-center">
+                                                                                                <span className="text-xs text-slate-500">단원명:</span>
+                                                                                                <span className="font-medium text-sm">{scheduleItem.unitName}</span>
+                                                                                            </div>
+                                                                                            <div className="bg-blue-50 border border-blue-200 p-1.5 mt-2">
+                                                                                                <div className="text-xs text-blue-600 font-bold">진도 범위</div>
+                                                                                                <div className="text-xs font-mono mt-0.5">{scheduleItem.wordRange}</div>
+                                                                                            </div>
+                                                                                            <div className="flex justify-between items-center bg-yellow-50 border border-yellow-300 p-1.5 mt-1">
+                                                                                                <span className="text-xs font-bold text-yellow-800">{scheduleItem.date}</span>
+                                                                                                <span className="text-xs font-black text-yellow-900">{scheduleItem.wordCount}개 단어</span>
+                                                                                            </div>
+                                                                                        </>
+                                                                                    ) : (
+                                                                                        <>
+                                                                                            <div className="flex justify-between items-center group/item">
+                                                                                                <span className="font-medium">{scheduleItem.unit}</span>
+                                                                                                <button className="text-xs text-red-500 opacity-0 group-hover/item:opacity-100 hover:text-red-700 font-bold">×</button>
+                                                                                            </div>
+                                                                                            <div className="flex justify-between items-center group/item">
+                                                                                                <span className="text-slate-600">{scheduleItem.subUnit}</span>
+                                                                                                <button className="text-xs text-red-500 opacity-0 group-hover/item:opacity-100 hover:text-red-700 font-bold">×</button>
+                                                                                            </div>
+                                                                                            <div className="flex justify-between items-center group/item bg-white border border-black p-1 shadow-sm">
+                                                                                                <span className="font-bold text-xs">진도: {scheduleItem.range}</span>
+                                                                                                <button className="text-xs text-red-500 opacity-0 group-hover/item:opacity-100 hover:text-red-700 font-bold">×</button>
+                                                                                            </div>
+                                                                                        </>
+                                                                                    )}
                                                                                 </div>
                                                                             </div>
                                                                         ) : (

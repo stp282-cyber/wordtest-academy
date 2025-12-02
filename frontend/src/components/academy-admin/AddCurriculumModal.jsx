@@ -9,52 +9,28 @@ const AddCurriculumModal = ({ isOpen, onClose, onRegister, student }) => {
     const [selectedCurriculum, setSelectedCurriculum] = useState(null);
     const [selectedDays, setSelectedDays] = useState([]);
     const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
+    const [startNumber, setStartNumber] = useState(1);
     const [showDropdown, setShowDropdown] = useState(false);
     const [availableCurriculums, setAvailableCurriculums] = useState([]);
 
-    // Load wordbooks from API
+
+    // Load curriculums from localStorage
     useEffect(() => {
-        const loadWordbooks = async () => {
-            try {
-                const token = localStorage.getItem('token');
-                console.log('Loading wordbooks, token:', token ? 'exists' : 'missing');
-
-                const response = await fetch('http://localhost:3000/api/wordbooks/academy', {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
-
-                console.log('Wordbooks response status:', response.status);
-
-                if (response.ok) {
-                    const data = await response.json();
-                    console.log('Loaded wordbooks:', data);
-
-                    setAvailableCurriculums(data.map(wb => ({
-                        id: wb.id,
-                        title: wb.title,
-                        wordbooks: [wb.title]
-                    })));
-                } else {
-                    console.error('Failed to load wordbooks, status:', response.status);
-                    const errorText = await response.text();
-                    console.error('Error response:', errorText);
-                }
-            } catch (error) {
-                console.error('Failed to load wordbooks:', error);
-                // Fallback: Use mock data when API is not available
-                console.log('Using mock data as fallback');
-                setAvailableCurriculums([
-                    { id: 1, title: 'STANDARD BEGINNER COURSE', wordbooks: ['Chapter 1', 'Chapter 2', 'Chapter 3'] },
-                    { id: 2, title: 'TEST', wordbooks: ['Test Unit 1', 'Test Unit 2'] },
-                    { id: 3, title: '새커리큘럼', wordbooks: ['Unit 1'] },
-                    { id: 4, title: '새 커리큘럼1', wordbooks: ['Unit 1', 'Unit 2', 'Unit 3'] },
-                ]);
-            }
-        };
         if (isOpen) {
-            loadWordbooks();
+            try {
+                // Load from localStorage.curriculums (same as CurriculumList page)
+                const savedCurriculums = JSON.parse(localStorage.getItem('curriculums') || '[]');
+                console.log('Loaded curriculums from localStorage:', savedCurriculums);
+
+                setAvailableCurriculums(savedCurriculums.map(curr => ({
+                    id: curr.id,
+                    title: curr.name,
+                    wordbooks: Array.isArray(curr.wordbooks) ? curr.wordbooks : [curr.name]
+                })));
+            } catch (error) {
+                console.error('Failed to load curriculums:', error);
+                setAvailableCurriculums([]);
+            }
         }
     }, [isOpen]);
 
@@ -97,6 +73,7 @@ const AddCurriculumModal = ({ isOpen, onClose, onRegister, student }) => {
             title: selectedCurriculum.title,
             days: selectedDays,
             startDate: startDate,
+            startNumber: parseInt(startNumber) || 1,
             wordbooks: selectedCurriculum.wordbooks
         };
 
@@ -109,6 +86,7 @@ const AddCurriculumModal = ({ isOpen, onClose, onRegister, student }) => {
         setSelectedCurriculum(null);
         setSelectedDays([]);
         setStartDate('');
+        setStartNumber(1);
         setShowDropdown(false);
     };
 
@@ -122,7 +100,8 @@ const AddCurriculumModal = ({ isOpen, onClose, onRegister, student }) => {
             curriculumId: selectedCurriculum.id,
             title: selectedCurriculum.title,
             days: selectedDays,
-            startDate: startDate
+            startDate: startDate,
+            startNumber: startNumber
         };
 
         localStorage.setItem('copiedCurriculum', JSON.stringify(copyData));
@@ -143,6 +122,7 @@ const AddCurriculumModal = ({ isOpen, onClose, onRegister, student }) => {
             setSelectedCurriculum(curriculum);
             setSelectedDays(data.days);
             setStartDate(data.startDate);
+            setStartNumber(data.startNumber || 1);
             alert('커리큘럼 정보가 붙여넣기 되었습니다.');
         } else {
             alert('해당 커리큘럼을 찾을 수 없습니다.');
@@ -276,6 +256,22 @@ const AddCurriculumModal = ({ isOpen, onClose, onRegister, student }) => {
                             onChange={(e) => setStartDate(e.target.value)}
                             className="w-full p-3 border-2 border-black font-bold focus:outline-none focus:shadow-neo"
                         />
+                    </div>
+
+                    {/* 시작 번호 입력 */}
+                    <div className="space-y-2">
+                        <label className="font-black text-sm uppercase bg-black text-white px-3 py-1 inline-block">
+                            4. 시작 번호
+                        </label>
+                        <input
+                            type="number"
+                            min="1"
+                            value={startNumber}
+                            onChange={(e) => setStartNumber(e.target.value)}
+                            placeholder="첫 번째 단어 번호 (예: 1)"
+                            className="w-full p-3 border-2 border-black font-bold focus:outline-none focus:shadow-neo"
+                        />
+                        <p className="text-xs text-slate-500 font-bold">커리큘럼 첫 번째 단어장의 시작 번호를 입력하세요.</p>
                     </div>
 
 

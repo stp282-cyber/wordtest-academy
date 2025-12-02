@@ -1,0 +1,735 @@
+import React, { useState, useEffect } from 'react';
+import { Volume2, ArrowLeft, ShieldAlert, X, Check, RotateCcw, BookOpen, Award } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import Button from '../../components/common/Button';
+import { getPreviousTwoDaysWords } from '../../utils/scheduleUtils';
+
+const WordTest = () => {
+    const navigate = useNavigate();
+    const [lessonData, setLessonData] = useState(null);
+
+    // Test phases: 'study', 'main', 'main_retry', 'wrong_review', 'wrong_retry', 'review', 'review_retry', 'complete'
+    const [testPhase, setTestPhase] = useState('study');
+    const [currentStudyIndex, setCurrentStudyIndex] = useState(0);
+    const [currentTestIndex, setCurrentTestIndex] = useState(0);
+
+    // Test data
+    const [mainWords, setMainWords] = useState([]);
+    const [wrongWords, setWrongWords] = useState([]);
+    const [reviewWords, setReviewWords] = useState([]);
+    const [reviewWrongWords, setReviewWrongWords] = useState([]);
+
+    // User input
+    const [typedAnswer, setTypedAnswer] = useState('');
+    const [selectedChoice, setSelectedChoice] = useState(null);
+    const [playingWord, setPlayingWord] = useState(null);
+
+    // Results
+    const [mainScore, setMainScore] = useState(0);
+    const [wrongRetryCount, setWrongRetryCount] = useState(0);
+    const [reviewScore, setReviewScore] = useState(0);
+    const [reviewRetryCount, setReviewRetryCount] = useState(0);
+
+    // Settings from curriculum
+    const [passScore, setPassScore] = useState(70);
+    const [testMode, setTestMode] = useState('typing_english');
+
+    useEffect(() => {
+        // Load lesson data from localStorage
+        const savedLesson = localStorage.getItem('currentLesson');
+        if (savedLesson) {
+            const parsed = JSON.parse(savedLesson);
+            setLessonData(parsed);
+            setPassScore(parsed.schedule?.passScore || 70);
+            setTestMode(parsed.schedule?.testType || 'typing_english');
+
+            // Shuffle words for main test
+            const shuffled = [...parsed.words].sort(() => Math.random() - 0.5);
+            setMainWords(shuffled);
+
+            // Load previous 2 days words for review
+            const prevWords = getPreviousTwoDaysWords(parsed.curriculum, new Date());
+            if (prevWords.length > 0) {
+                const shuffledReview = [...prevWords].sort(() => Math.random() - 0.5);
+                setReviewWords(shuffledReview);
+            }
+        } else {
+            navigate('/student/learning');
+        }
+
+        // Security: Disable right-click and copy/paste
+        const handleContextMenu = (e) => e.preventDefault();
+        const handleCopyPaste = (e) => e.preventDefault();
+
+        document.addEventListener('contextmenu', handleContextMenu);
+        document.addEventListener('copy', handleCopyPaste);
+        document.addEventListener('cut', handleCopyPaste);
+        document.addEventListener('paste', handleCopyPaste);
+
+        return () => {
+            document.removeEventListener('contextmenu', handleContextMenu);
+            document.removeEventListener('copy', handleCopyPaste);
+            document.removeEventListener('cut', handleCopyPaste);
+            document.removeEventListener('paste', handleCopyPaste);
+        };
+    }, [navigate]);
+
+    // TTS function
+    const playTTS = (text) => {
+        if (!window.speechSynthesis) return;
+
+        window.speechSynthesis.cancel();
+
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'en-US';
+        utterance.rate = 0.8;
+
+        setPlayingWord(text);
+        utterance.onend = () => setPlayingWord(null);
+
+        window.speechSynthesis.speak(utterance);
+    };
+
+    // Normalize answer (remove special characters and spaces)
+    const normalizeAnswer = (text) => {
+        return text
+            .toLowerCase()
+            .replace(/[^a-z0-9]/g, '')
+            .trim();
+    };
+
+    // Check typing answer
+    const checkTypingAnswer = (userAnswer, correctAnswer) => {
+        return normalizeAnswer(userAnswer) === normalizeAnswer(correctAnswer);
+    };
+
+    // Handle typing submit
+    const handleTypingSubmit = () => {
+        if (!typedAnswer.trim()) return;
+
+        const currentWords = testPhase === 'main' || testPhase === 'main_retry' ? mainWords :
+            testPhase === 'wrong_retry' ? wrongWords : [];
+
+        const currentWord = currentWords[currentTestIndex];
+        const isCorrect = checkTypingAnswer(typedAnswer, currentWord.english);
+
+        if (testPhase === 'main' || testPhase === 'main_retry') {
+            handleMainTestAnswer(isCorrect, currentWord);
+        } else if (testPhase === 'wrong_retry') {
+            handleWrongRetryAnswer(isCorrect, currentWord);
+        }
+    };
+
+    // Handle main test answer
+    const handleMainTestAnswer = (isCorrect, word) => {
+        if (!isCorrect && !wrongWords.find(w => w.number === word.number)) {
+            setWrongWords(prev => [...prev, word]);
+        }
+
+        if (currentTestIndex < mainWords.length - 1) {
+            setCurrentTestIndex(prev => prev + 1);
+            setTypedAnswer('');
+        } else {
+            // Calculate score
+            const correct = mainWords.length - wrongWords.length - (isCorrect ? 0 : 1);
+            const score = Math.round((correct / mainWords.length) * 100);
+            setMainScore(score);
+
+            // Check if passed
+            if (score >= passScore) {
+                // Check if there are wrong answers
+                const finalWrong = isCorrect ? wrongWords : [...wrongWords, word];
+                if (finalWrong.length > 0) {
+                    setWrongWords(finalWrong);
+                    setTestPhase('wrong_review');
+                    setCurrentTestIndex(0);
+                } else {
+                    // No wrong answers, go to review or complete
+                    if (reviewWords.length > 0) {
+                        setTestPhase('review');
+                        setCurrentTestIndex(0);
+                    } else {
+                        setTestPhase('complete');
+                    }
+                }
+            } else {
+                // Failed, retry main test
+                setTestPhase('main_retry');
+                setCurrentTestIndex(0);
+                setWrongWords([]);
+                setTypedAnswer('');
+            }
+        }
+    };
+
+    // Handle wrong retry answer
+    const handleWrongRetryAnswer = (isCorrect, word) => {
+        if (!isCorrect && !reviewWrongWords.find(w => w.number === word.number)) {
+            setReviewWrongWords(prev => [...prev, word]);
+        }
+
+        if (currentTestIndex < wrongWords.length - 1) {
+            setCurrentTestIndex(prev => prev + 1);
+            setTypedAnswer('');
+        } else {
+            // Check if all correct
+            const finalWrong = isCorrect ? reviewWrongWords : [...reviewWrongWords, word];
+            if (finalWrong.length === 0) {
+                setWrongRetryCount(prev => prev + 1);
+                // All correct, go to review or complete
+                if (reviewWords.length > 0) {
+                    setTestPhase('review');
+                    setCurrentTestIndex(0);
+                } else {
+                    setTestPhase('complete');
+                }
+            } else {
+                // Still have wrong answers, retry again
+                setWrongWords(finalWrong);
+                setReviewWrongWords([]);
+                setWrongRetryCount(prev => prev + 1);
+                setCurrentTestIndex(0);
+                setTypedAnswer('');
+            }
+        }
+    };
+
+    // Generate multiple choice options
+    const generateChoices = (correctWord, allWords) => {
+        const choices = [correctWord.korean];
+        const otherWords = allWords.filter(w => w.number !== correctWord.number);
+
+        while (choices.length < 5 && otherWords.length > 0) {
+            const randomIndex = Math.floor(Math.random() * otherWords.length);
+            const randomWord = otherWords[randomIndex];
+            if (!choices.includes(randomWord.korean)) {
+                choices.push(randomWord.korean);
+            }
+            otherWords.splice(randomIndex, 1);
+        }
+
+        // Shuffle choices
+        return choices.sort(() => Math.random() - 0.5);
+    };
+
+    // Handle multiple choice answer
+    const handleChoiceAnswer = (choice) => {
+        const currentWords = testPhase === 'review' ? reviewWords : reviewWrongWords;
+        const currentWord = currentWords[currentTestIndex];
+        const isCorrect = choice === currentWord.korean;
+
+        setSelectedChoice(choice);
+
+        setTimeout(() => {
+            if (testPhase === 'review') {
+                handleReviewAnswer(isCorrect, currentWord);
+            } else if (testPhase === 'review_retry') {
+                handleReviewRetryAnswer(isCorrect, currentWord);
+            }
+            setSelectedChoice(null);
+        }, 500);
+    };
+
+    // Handle review test answer
+    const handleReviewAnswer = (isCorrect, word) => {
+        if (!isCorrect && !reviewWrongWords.find(w => w.number === word.number)) {
+            setReviewWrongWords(prev => [...prev, word]);
+        }
+
+        if (currentTestIndex < reviewWords.length - 1) {
+            setCurrentTestIndex(prev => prev + 1);
+        } else {
+            // Calculate score
+            const correct = reviewWords.length - reviewWrongWords.length - (isCorrect ? 0 : 1);
+            const score = Math.round((correct / reviewWords.length) * 100);
+            setReviewScore(score);
+
+            // Check if there are wrong answers
+            const finalWrong = isCorrect ? reviewWrongWords : [...reviewWrongWords, word];
+            if (finalWrong.length > 0) {
+                setReviewWrongWords(finalWrong);
+                setTestPhase('review_retry');
+                setCurrentTestIndex(0);
+            } else {
+                setTestPhase('complete');
+            }
+        }
+    };
+
+    // Handle review retry answer
+    const handleReviewRetryAnswer = (isCorrect, word) => {
+        const tempWrong = [...reviewWrongWords];
+        if (!isCorrect) {
+            // Keep in wrong list
+        } else {
+            // Remove from wrong list
+            const index = tempWrong.findIndex(w => w.number === word.number);
+            if (index !== -1) {
+                tempWrong.splice(index, 1);
+            }
+        }
+
+        if (currentTestIndex < reviewWrongWords.length - 1) {
+            setCurrentTestIndex(prev => prev + 1);
+        } else {
+            if (tempWrong.length === 0) {
+                setReviewRetryCount(prev => prev + 1);
+                setTestPhase('complete');
+            } else {
+                setReviewWrongWords(tempWrong);
+                setReviewRetryCount(prev => prev + 1);
+                setCurrentTestIndex(0);
+            }
+        }
+    };
+
+    // Handle key press
+    const handleKeyPress = (e) => {
+        if (e.key === 'Enter') {
+            handleTypingSubmit();
+        }
+    };
+
+    if (!lessonData) return null;
+
+    const { curriculum, schedule, words } = lessonData;
+
+    // Render different phases
+    const renderPhaseContent = () => {
+        switch (testPhase) {
+            case 'study':
+                return renderStudyMode();
+
+            case 'main':
+            case 'main_retry':
+                return renderTypingTest(mainWords, '1차 타이핑 시험', testPhase === 'main_retry');
+
+            case 'wrong_review':
+                return renderWrongReview();
+
+            case 'wrong_retry':
+                return renderTypingTest(wrongWords, '오답 재시험', false);
+
+            case 'review':
+                return renderMultipleChoiceTest(reviewWords, '복습 시험 (5지선다)');
+
+            case 'review_retry':
+                return renderMultipleChoiceTest(reviewWrongWords, '복습 오답 재시험');
+
+            case 'complete':
+                return renderComplete();
+
+            default:
+                return null;
+        }
+    };
+
+    // Render study mode (flashcards)
+    const renderStudyMode = () => {
+        if (mainWords.length === 0) return null;
+        const currentWord = mainWords[currentStudyIndex];
+
+        return (
+            <div className="fixed inset-0 z-50 bg-gradient-to-br from-blue-900 via-purple-900 to-pink-900 flex items-center justify-center p-4">
+                <div className="w-full max-w-4xl">
+                    {/* Header */}
+                    <div className="text-center mb-8">
+                        <h2 className="text-4xl font-black text-white mb-2">📚 단어 학습</h2>
+                        <p className="text-xl text-white/80 font-bold">시험 전에 단어를 먼저 암기하세요</p>
+                        <div className="mt-4 inline-block bg-white/20 backdrop-blur-sm border-2 border-white px-4 py-2 rounded-full">
+                            <span className="text-white font-black text-lg">
+                                {currentStudyIndex + 1} / {mainWords.length}
+                            </span>
+                        </div>
+                    </div>
+
+                    {/* Flashcard */}
+                    <div className="bg-white border-8 border-black shadow-[16px_16px_0px_0px_rgba(0,0,0,1)] p-12 mb-8">
+                        <div className="text-center space-y-8">
+                            {/* English Word */}
+                            <div>
+                                <p className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-2">English</p>
+                                <h3 className="text-6xl md:text-7xl font-black text-black mb-4">
+                                    {currentWord.english}
+                                </h3>
+                                <button
+                                    onClick={() => playTTS(currentWord.english)}
+                                    className={`inline-flex items-center gap-2 px-6 py-3 border-4 border-black font-bold text-lg transition-all ${playingWord === currentWord.english
+                                            ? 'bg-blue-600 text-white scale-110'
+                                            : 'bg-yellow-300 hover:bg-yellow-400 hover:scale-105'
+                                        }`}
+                                >
+                                    <Volume2 className="w-6 h-6" />
+                                    {playingWord === currentWord.english ? 'Playing...' : 'Listen'}
+                                </button>
+                            </div>
+
+                            {/* Divider */}
+                            <div className="h-1 w-32 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 mx-auto" />
+
+                            {/* Korean Meaning */}
+                            <div>
+                                <p className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-2">한글 뜻</p>
+                                <p className="text-5xl font-black text-slate-700">
+                                    {currentWord.korean}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Navigation */}
+                    <div className="flex justify-between items-center">
+                        <Button
+                            onClick={() => setCurrentStudyIndex(prev => Math.max(0, prev - 1))}
+                            disabled={currentStudyIndex === 0}
+                            className="bg-white text-black border-black hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed px-8 py-4 text-lg"
+                        >
+                            ← 이전
+                        </Button>
+
+                        {currentStudyIndex < mainWords.length - 1 ? (
+                            <Button
+                                onClick={() => setCurrentStudyIndex(prev => prev + 1)}
+                                className="bg-white text-black border-black hover:bg-slate-100 px-8 py-4 text-lg"
+                            >
+                                다음 →
+                            </Button>
+                        ) : (
+                            <Button
+                                onClick={() => {
+                                    setTestPhase('main');
+                                    setCurrentTestIndex(0);
+                                    setTypedAnswer('');
+                                }}
+                                className="bg-green-500 text-white border-black hover:bg-green-600 px-12 py-4 text-xl font-black animate-pulse"
+                            >
+                                시험 시작! 🚀
+                            </Button>
+                        )}
+                    </div>
+
+                    {/* Skip Button */}
+                    <div className="text-center mt-6">
+                        <button
+                            onClick={() => {
+                                setTestPhase('main');
+                                setCurrentTestIndex(0);
+                                setTypedAnswer('');
+                            }}
+                            className="text-white/60 hover:text-white font-bold text-sm underline"
+                        >
+                            학습 건너뛰고 바로 시험 보기
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    // Render typing test
+    const renderTypingTest = (testWords, title, isRetry) => {
+        if (testWords.length === 0) return null;
+        const currentWord = testWords[currentTestIndex];
+
+        return (
+            <div className="fixed inset-0 z-50 bg-slate-900/95 backdrop-blur-md flex items-center justify-center p-4">
+                <div className="w-full max-w-3xl bg-white border-4 border-black shadow-neo-lg overflow-hidden">
+                    {/* Header */}
+                    <div className="bg-black text-white p-4 flex justify-between items-center border-b-4 border-black">
+                        <div className="flex items-center gap-4">
+                            <h2 className="text-2xl font-black italic uppercase">{title}</h2>
+                            {isRetry && <span className="bg-red-500 text-white px-3 py-1 font-bold text-sm">재시험 (통과점수: {passScore}점)</span>}
+                            <span className="bg-yellow-300 text-black px-2 py-0.5 font-bold text-sm border border-white">
+                                {currentTestIndex + 1} / {testWords.length}
+                            </span>
+                        </div>
+                        <button onClick={() => navigate('/student/learning')} className="hover:text-red-400 transition-colors">
+                            <X className="w-8 h-8" />
+                        </button>
+                    </div>
+
+                    {/* Content */}
+                    <div className="p-8 md:p-12 min-h-[400px] flex flex-col items-center justify-center">
+                        <div className="w-full max-w-xl space-y-8 text-center">
+                            <div className="space-y-2">
+                                <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">한글 뜻</p>
+                                <h3 className="text-5xl md:text-6xl font-black text-black">
+                                    {currentWord.korean}
+                                </h3>
+                            </div>
+
+                            <div className="space-y-4">
+                                <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">영어 단어 입력</p>
+                                <input
+                                    type="text"
+                                    value={typedAnswer}
+                                    onChange={(e) => setTypedAnswer(e.target.value)}
+                                    onKeyPress={handleKeyPress}
+                                    placeholder="Type the English word..."
+                                    autoFocus
+                                    className="w-full text-3xl font-bold text-center p-4 border-4 border-black focus:outline-none focus:shadow-neo"
+                                />
+                                <Button
+                                    onClick={handleTypingSubmit}
+                                    disabled={!typedAnswer.trim()}
+                                    className="w-full bg-blue-600 text-white border-black hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    제출
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Progress Bar */}
+                    <div className="h-2 bg-slate-100">
+                        <div
+                            className="h-full bg-yellow-400 transition-all duration-300"
+                            style={{ width: `${((currentTestIndex) / testWords.length) * 100}%` }}
+                        />
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    // Render wrong review (flashcard mode)
+    const renderWrongReview = () => {
+        return (
+            <div className="fixed inset-0 z-50 bg-slate-900/95 backdrop-blur-md flex items-center justify-center p-4">
+                <div className="w-full max-w-3xl bg-white border-4 border-black shadow-neo-lg p-8">
+                    <div className="text-center space-y-8">
+                        <div className="inline-block bg-yellow-300 border-4 border-black p-4 shadow-neo">
+                            <BookOpen className="w-16 h-16 mx-auto mb-4" />
+                            <h2 className="text-3xl font-black">오답 복습</h2>
+                            <p className="text-lg font-bold mt-2">틀린 단어를 다시 확인하세요</p>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-96 overflow-y-auto p-4">
+                            {wrongWords.map((word, index) => (
+                                <div key={index} className="bg-red-50 border-4 border-red-300 p-4 shadow-neo-sm">
+                                    <div className="text-2xl font-black text-black">{word.english}</div>
+                                    <div className="text-lg font-bold text-slate-600 mt-2">{word.korean}</div>
+                                </div>
+                            ))}
+                        </div>
+
+                        <Button
+                            onClick={() => {
+                                setTestPhase('wrong_retry');
+                                setCurrentTestIndex(0);
+                                setTypedAnswer('');
+                                setReviewWrongWords([]);
+                            }}
+                            className="bg-green-500 text-white border-black hover:bg-green-600 px-8 py-4 text-xl"
+                        >
+                            재시험 시작
+                        </Button>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    // Render multiple choice test
+    const renderMultipleChoiceTest = (testWords, title) => {
+        if (testWords.length === 0) return null;
+        const currentWord = testWords[currentTestIndex];
+        const choices = generateChoices(currentWord, testWords);
+
+        return (
+            <div className="fixed inset-0 z-50 bg-slate-900/95 backdrop-blur-md flex items-center justify-center p-4">
+                <div className="w-full max-w-3xl bg-white border-4 border-black shadow-neo-lg overflow-hidden">
+                    {/* Header */}
+                    <div className="bg-purple-600 text-white p-4 flex justify-between items-center border-b-4 border-black">
+                        <div className="flex items-center gap-4">
+                            <h2 className="text-2xl font-black italic uppercase">{title}</h2>
+                            <span className="bg-yellow-300 text-black px-2 py-0.5 font-bold text-sm border border-white">
+                                {currentTestIndex + 1} / {testWords.length}
+                            </span>
+                        </div>
+                        <button onClick={() => navigate('/student/learning')} className="hover:text-red-400 transition-colors">
+                            <X className="w-8 h-8" />
+                        </button>
+                    </div>
+
+                    {/* Content */}
+                    <div className="p-8 md:p-12 min-h-[400px] flex flex-col items-center justify-center">
+                        <div className="w-full max-w-xl space-y-8 text-center">
+                            <div className="space-y-2">
+                                <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">영어 단어</p>
+                                <h3 className="text-5xl md:text-6xl font-black text-black">
+                                    {currentWord.english}
+                                </h3>
+                            </div>
+
+                            <div className="space-y-3">
+                                <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">한글 뜻 선택</p>
+                                {choices.map((choice, index) => (
+                                    <button
+                                        key={index}
+                                        onClick={() => handleChoiceAnswer(choice)}
+                                        disabled={selectedChoice !== null}
+                                        className={`w-full p-4 border-4 text-lg font-bold transition-all ${selectedChoice === choice
+                                            ? choice === currentWord.korean
+                                                ? 'bg-green-500 border-green-700 text-white'
+                                                : 'bg-red-500 border-red-700 text-white'
+                                            : 'bg-white border-black hover:bg-slate-100 hover:shadow-neo'
+                                            } disabled:cursor-not-allowed`}
+                                    >
+                                        {choice}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Progress Bar */}
+                    <div className="h-2 bg-slate-100">
+                        <div
+                            className="h-full bg-purple-400 transition-all duration-300"
+                            style={{ width: `${((currentTestIndex) / testWords.length) * 100}%` }}
+                        />
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    // Render complete screen
+    const renderComplete = () => {
+        return (
+            <div className="fixed inset-0 z-50 bg-slate-900/95 backdrop-blur-md flex items-center justify-center p-4">
+                <div className="w-full max-w-3xl bg-white border-4 border-black shadow-neo-lg p-12">
+                    <div className="text-center space-y-8">
+                        <div className="inline-block">
+                            <Award className="w-32 h-32 text-yellow-500 mx-auto animate-bounce" />
+                        </div>
+
+                        <div>
+                            <h2 className="text-5xl font-black text-black mb-4">시험 완료!</h2>
+                            <p className="text-xl text-slate-600 font-bold">모든 단계를 성공적으로 완료했습니다</p>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="bg-blue-100 border-4 border-blue-500 p-6 shadow-neo">
+                                <div className="text-sm font-black text-blue-600 uppercase">1차 시험 점수</div>
+                                <div className="text-4xl font-black text-black mt-2">{mainScore}점</div>
+                            </div>
+                            {reviewWords.length > 0 && (
+                                <div className="bg-purple-100 border-4 border-purple-500 p-6 shadow-neo">
+                                    <div className="text-sm font-black text-purple-600 uppercase">복습 시험 점수</div>
+                                    <div className="text-4xl font-black text-black mt-2">{reviewScore}점</div>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="flex gap-4 justify-center">
+                            <Button
+                                onClick={() => navigate('/student/learning')}
+                                className="bg-black text-white border-black hover:bg-slate-800 px-8 py-4 text-xl"
+                            >
+                                학습 일정으로 돌아가기
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    return (
+        <div className="min-h-screen bg-slate-100 p-4 md:p-8 select-none">
+            <div className="max-w-5xl mx-auto space-y-8">
+                {/* Header Section */}
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div>
+                        <Button
+                            onClick={() => navigate('/student/learning')}
+                            variant="ghost"
+                            className="mb-2 pl-0 hover:bg-transparent hover:text-slate-600"
+                        >
+                            <ArrowLeft className="w-5 h-5 mr-2" /> Back to Schedule
+                        </Button>
+                        <h1 className="text-4xl font-black text-black uppercase italic tracking-tight">
+                            Word Study
+                        </h1>
+                        <div className="flex items-center gap-3 mt-2">
+                            <span className="bg-black text-white px-3 py-1 font-bold text-sm transform -rotate-2">
+                                {schedule.textbook}
+                            </span>
+                            <span className="bg-yellow-300 border-2 border-black px-3 py-1 font-bold text-sm shadow-neo-sm">
+                                {schedule.unitName || `${schedule.major} - ${schedule.minor}`}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div className="flex gap-4">
+                        <div className="hidden md:flex items-center gap-2 px-4 py-2 bg-red-100 border-2 border-red-500 text-red-600 font-bold text-xs rounded-full">
+                            <ShieldAlert className="w-4 h-4" />
+                            Anti-Cheat Active
+                        </div>
+                        <Button
+                            onClick={() => {
+                                setTestPhase('main');
+                                setCurrentTestIndex(0);
+                                setTypedAnswer('');
+                                setWrongWords([]);
+                                setReviewWrongWords([]);
+                                setMainScore(0);
+                                setReviewScore(0);
+                            }}
+                            className="bg-blue-600 text-white border-black hover:bg-blue-700 hover:scale-105 transform transition-all shadow-neo-lg px-8 py-4 text-lg"
+                        >
+                            시험 시작
+                        </Button>
+                    </div>
+                </div>
+
+                {/* Word List Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {words && words.map((word, index) => (
+                        <div
+                            key={index}
+                            className="relative group bg-white border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] hover:shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-1 hover:-translate-x-1 transition-all duration-200 overflow-hidden"
+                        >
+                            {/* Number Badge */}
+                            <div className="absolute top-0 left-0 bg-black text-white px-3 py-1 font-black text-sm border-b-2 border-r-2 border-black z-10">
+                                #{index + 1}
+                            </div>
+
+                            <div className="p-6 pt-10 text-center space-y-4">
+                                {/* English Word */}
+                                <div className="relative">
+                                    <h3 className="text-3xl font-black text-black break-words leading-tight">
+                                        {word.english}
+                                    </h3>
+                                    <div className="h-2 w-16 bg-yellow-300 mx-auto mt-2 transform -rotate-2 group-hover:scale-110 transition-transform" />
+                                </div>
+
+                                {/* Korean Meaning */}
+                                <p className="text-xl font-bold text-slate-600 group-hover:text-black transition-colors">
+                                    {word.korean}
+                                </p>
+                            </div>
+
+                            {/* Bottom Strip */}
+                            <div className="h-2 w-full bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left" />
+                        </div>
+                    ))}
+                </div>
+
+                {/* Footer Info */}
+                <div className="text-center py-8">
+                    <p className="text-slate-500 font-mono text-sm">
+                        통과 점수: {passScore}점 • 복습 범위: 이전 2일치 단어
+                    </p>
+                </div>
+            </div>
+
+            {/* Test Modal */}
+            {testPhase !== 'idle' && renderPhaseContent()}
+        </div>
+    );
+};
+
+export default WordTest;

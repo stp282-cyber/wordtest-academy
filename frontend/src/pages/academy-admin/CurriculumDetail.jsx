@@ -116,7 +116,7 @@ const CurriculumDetail = () => {
                 wordsPerUnit: wordbook.wordsPerUnit
             },
             settings: {
-                testType: 'typing',
+                testType: 'typing_english',
                 wordCount: Math.round(wordbook.wordsPerUnit), // Default to 1 unit
                 passScore: 100,
                 dailyGoal: '1_unit' // Default to 1 unit
@@ -253,7 +253,7 @@ const CurriculumDetail = () => {
                                                             onChange={(e) => handleSettingChange(index, 'testType', e.target.value)}
                                                             className="w-full p-1 border-2 border-black text-sm font-bold focus:outline-none"
                                                         >
-                                                            <option value="typing">타자 연습 (한글)</option>
+                                                            <option value="typing_english">타이핑 (영어)</option>
                                                             <option value="scramble_select">순서 섞기 (선택)</option>
                                                             <option value="scramble_typing">순서 섞기 (타자)</option>
                                                             <option value="choice">객관식</option>
