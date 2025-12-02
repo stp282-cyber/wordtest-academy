@@ -1,8 +1,10 @@
-import React from 'react';
-import { Keyboard, Type, LayoutGrid, Play, Trophy, Medal, Crown } from 'lucide-react';
+import React, { useState } from 'react';
+import { Keyboard, Type, LayoutGrid, Play, Trophy, Medal, Crown, Crosshair, X, Puzzle, Hammer, Search } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
+
+import { getTopScores, getAllScores } from '../../services/gameScoreService';
 
 const GameCard = ({ icon: Icon, title, description, color, link, isNew }) => (
     <Card className="flex flex-col h-full border-4 border-black shadow-neo-lg hover:shadow-neo-lg hover:-translate-y-2 transition-all group cursor-pointer bg-white relative overflow-hidden">
@@ -28,16 +30,82 @@ const GameCard = ({ icon: Icon, title, description, color, link, isNew }) => (
 );
 
 const Games = () => {
-    const topPlayers = [
-        { rank: 1, name: 'Sarah Kim', game: 'Word Match', score: 2450, avatar: '👑' },
-        { rank: 2, name: 'Mike Lee', game: 'Speed Typing', score: 2100, avatar: '🥈' },
-        { rank: 3, name: 'Jenny Park', game: 'Word Match', score: 1950, avatar: '🥉' },
-        { rank: 4, name: 'Tom Chen', game: 'Speed Typing', score: 1800, avatar: '👾' },
-        { rank: 5, name: 'Alex Cho', game: 'Flashcards', score: 1500, avatar: '📚' },
-    ];
+    const [isRankingsOpen, setIsRankingsOpen] = useState(false);
+    const [topPlayers, setTopPlayers] = useState([]);
+    const [allRankings, setAllRankings] = useState([]);
+
+    React.useEffect(() => {
+        setTopPlayers(getTopScores(5));
+        setAllRankings(getAllScores());
+
+        // Listen for storage updates (in case game played in another tab, though unlikely here, good practice)
+        const handleStorageChange = () => {
+            setTopPlayers(getTopScores(5));
+            setAllRankings(getAllScores());
+        };
+
+        window.addEventListener('storage', handleStorageChange);
+        // Custom event for same-tab updates
+        window.addEventListener('gameScoreUpdated', handleStorageChange);
+
+        return () => {
+            window.removeEventListener('storage', handleStorageChange);
+            window.removeEventListener('gameScoreUpdated', handleStorageChange);
+        };
+    }, []);
 
     return (
-        <div className="space-y-8">
+        <div className="space-y-8 relative">
+            {/* Rankings Modal */}
+            {isRankingsOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white border-4 border-black shadow-neo-lg w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
+                        <div className="p-6 border-b-4 border-black flex justify-between items-center bg-yellow-300">
+                            <h2 className="text-2xl font-black uppercase flex items-center gap-2">
+                                <Trophy className="w-6 h-6" /> All Rankings
+                            </h2>
+                            <Button onClick={() => setIsRankingsOpen(false)} variant="ghost" className="hover:bg-black/10">
+                                <X className="w-6 h-6" />
+                            </Button>
+                        </div>
+                        <div className="overflow-y-auto p-0">
+                            <table className="w-full text-left border-collapse">
+                                <thead className="bg-slate-100 border-b-2 border-black sticky top-0">
+                                    <tr>
+                                        <th className="p-4 font-black uppercase text-sm">Rank</th>
+                                        <th className="p-4 font-black uppercase text-sm">Player</th>
+                                        <th className="p-4 font-black uppercase text-sm">Game</th>
+                                        <th className="p-4 font-black uppercase text-sm text-right">Score</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y-2 divide-slate-100">
+                                    {allRankings.map((player, index) => (
+                                        <tr key={player.id} className="hover:bg-yellow-50 transition-colors font-bold">
+                                            <td className="p-4">
+                                                <div className={`
+                                                    w-8 h-8 flex items-center justify-center font-black rounded-full border-2 border-black shadow-sm
+                                                    ${index === 0 ? 'bg-yellow-400' :
+                                                        index === 1 ? 'bg-slate-300' :
+                                                            index === 2 ? 'bg-orange-300' : 'bg-white'}
+                                                `}>
+                                                    {index + 1}
+                                                </div>
+                                            </td>
+                                            <td className="p-4 flex items-center gap-3">
+                                                <span className="text-2xl">{player.avatar}</span>
+                                                {player.name}
+                                            </td>
+                                            <td className="p-4 text-slate-500 text-sm uppercase">{player.game}</td>
+                                            <td className="p-4 text-right font-mono text-lg">{player.score.toLocaleString()}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <div className="bg-white border-4 border-black p-6 shadow-neo-lg relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-yellow-300 rounded-full blur-3xl opacity-50 -translate-y-1/2 translate-x-1/2" />
                 <h1 className="text-4xl font-black text-black mb-2 uppercase italic relative z-10">Arcade Zone</h1>
@@ -54,11 +122,12 @@ const Games = () => {
                     isNew={true}
                 />
                 <GameCard
-                    icon={Type}
-                    title="Flashcards"
-                    description="Classic flashcard learning. Flip cards and memorize words at your own pace."
+                    icon={Puzzle}
+                    title="Word Scramble"
+                    description="Unscramble the letters to find the hidden word! A puzzle for your brain."
                     color="bg-yellow-300"
-                    link="/student/learning"
+                    link="/student/games/scramble"
+                    isNew={true}
                 />
                 <GameCard
                     icon={Keyboard}
@@ -66,6 +135,29 @@ const Games = () => {
                     description="Type the words as fast as you can! Race against the clock."
                     color="bg-red-300"
                     link="/student/games/typing"
+                />
+                <GameCard
+                    icon={Crosshair}
+                    title="Monster Defense"
+                    description="Defend your base! Type English words to shoot down incoming monsters."
+                    color="bg-purple-300"
+                    link="/student/games/defense"
+                    isNew={true}
+                />
+                <GameCard
+                    icon={Search}
+                    title="Word Search"
+                    description="Find the hidden English words in the grid! A classic puzzle."
+                    color="bg-green-300"
+                    link="/student/games/search"
+                    isNew={true}
+                />
+                <GameCard
+                    icon={Hammer}
+                    title="Word Whack"
+                    description="Whack the mole with the correct English word! Fast-paced fun."
+                    color="bg-orange-300"
+                    link="/student/games/whack"
                     isNew={true}
                 />
             </div>
@@ -76,7 +168,7 @@ const Games = () => {
                         <Trophy className="w-6 h-6 inline-block mr-2 mb-1 text-yellow-500" />
                         Top Players
                     </h2>
-                    <Button variant="secondary" className="text-sm">View All Rankings</Button>
+                    <Button onClick={() => setIsRankingsOpen(true)} variant="secondary" className="text-sm">View All Rankings</Button>
                 </div>
 
                 <Card className="overflow-hidden bg-white p-0 border-4 border-black shadow-neo-lg">
@@ -91,16 +183,16 @@ const Games = () => {
                                 </tr>
                             </thead>
                             <tbody className="divide-y-2 divide-slate-100">
-                                {topPlayers.map((player) => (
-                                    <tr key={player.rank} className="hover:bg-yellow-50 transition-colors font-bold">
+                                {topPlayers.map((player, index) => (
+                                    <tr key={player.id} className="hover:bg-yellow-50 transition-colors font-bold">
                                         <td className="p-4">
                                             <div className={`
                                                 w-8 h-8 flex items-center justify-center font-black rounded-full border-2 border-black shadow-sm
-                                                ${player.rank === 1 ? 'bg-yellow-400' :
-                                                    player.rank === 2 ? 'bg-slate-300' :
-                                                        player.rank === 3 ? 'bg-orange-300' : 'bg-white'}
+                                                ${index === 0 ? 'bg-yellow-400' :
+                                                    index === 1 ? 'bg-slate-300' :
+                                                        index === 2 ? 'bg-orange-300' : 'bg-white'}
                                             `}>
-                                                {player.rank}
+                                                {index + 1}
                                             </div>
                                         </td>
                                         <td className="p-4 flex items-center gap-3">

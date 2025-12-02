@@ -3,6 +3,8 @@ import { Timer, RefreshCw, Trophy, ArrowLeft, Heart, Zap } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
+import { saveScore } from '../../services/gameScoreService';
+import { useAuth } from '../../context/AuthContext';
 
 const WORDS = [
     'apple', 'banana', 'cherry', 'date', 'elderberry', 'fig', 'grape', 'honeydew',
@@ -12,9 +14,10 @@ const WORDS = [
     'music', 'art', 'dance', 'song', 'happy', 'smile', 'laugh', 'dream', 'hope'
 ];
 
-const COLORS = ['bg-yellow-300', 'bg-blue-300', 'bg-green-300', 'bg-purple-300', 'bg-orange-300'];
+const COLORS = ['text-red-500', 'text-blue-500', 'text-green-500', 'text-purple-500', 'text-orange-500'];
 
 const SpeedTyping = () => {
+    const { user } = useAuth();
     const [activeWords, setActiveWords] = useState([]);
     const [input, setInput] = useState('');
     const [score, setScore] = useState(0);
@@ -23,47 +26,54 @@ const SpeedTyping = () => {
     const [gameOver, setGameOver] = useState(false);
     const [level, setLevel] = useState(1);
 
-    const gameAreaRef = useRef(null);
     const requestRef = useRef();
     const lastSpawnTime = useRef(0);
     const inputRef = useRef(null);
+    const scoreRef = useRef(0);
+
+    useEffect(() => {
+        scoreRef.current = score;
+    }, [score]);
 
     // Game Loop
     const animate = useCallback((time) => {
         if (!isPlaying || gameOver) return;
 
-        // Spawn new words
-        if (time - lastSpawnTime.current > Math.max(2000 - (level * 200), 500)) {
+        // Spawn words
+        const spawnRate = Math.max(2000 - (level * 100), 500);
+        if (time - lastSpawnTime.current > spawnRate) {
             spawnWord();
             lastSpawnTime.current = time;
         }
 
-        // Update word positions
-        setActiveWords(prevWords => {
-            const newWords = prevWords.map(word => ({
-                ...word,
-                y: word.y + word.speed * (1 + level * 0.1)
+        // Update words
+        setActiveWords(prev => {
+            const newWords = prev.map(w => ({
+                ...w,
+                y: w.y + w.speed * (1 + level * 0.1)
             }));
 
-            // Check collisions with bottom
-            const missedWords = newWords.filter(word => word.y > 85); // 85% height
+            // Check missed words
+            const missedWords = newWords.filter(w => w.y > 90);
             if (missedWords.length > 0) {
-                setLives(prev => {
-                    const newLives = prev - missedWords.length;
+                setLives(l => {
+                    const newLives = l - missedWords.length;
                     if (newLives <= 0) {
                         setGameOver(true);
                         setIsPlaying(false);
+                        saveScore('Speed Typing', scoreRef.current, user?.full_name || user?.username || 'Student');
+                        window.dispatchEvent(new Event('gameScoreUpdated'));
                     }
                     return Math.max(0, newLives);
                 });
-                return newWords.filter(word => word.y <= 85);
+                return newWords.filter(w => w.y <= 90);
             }
 
             return newWords;
         });
 
         requestRef.current = requestAnimationFrame(animate);
-    }, [isPlaying, gameOver, level]);
+    }, [isPlaying, gameOver, level, user]);
 
     useEffect(() => {
         if (isPlaying && !gameOver) {
@@ -79,6 +89,12 @@ const SpeedTyping = () => {
             setLevel(newLevel);
         }
     }, [score, level]);
+
+    useEffect(() => {
+        if (isPlaying && !gameOver && inputRef.current) {
+            setTimeout(() => inputRef.current.focus(), 10);
+        }
+    }, [isPlaying, gameOver]);
 
     const spawnWord = () => {
         const wordText = WORDS[Math.floor(Math.random() * WORDS.length)];

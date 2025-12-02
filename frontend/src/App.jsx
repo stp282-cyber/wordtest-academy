@@ -24,6 +24,10 @@ import WordTest from './pages/student/WordTest';
 import Games from './pages/student/Games';
 import WordMatchGame from './pages/student/WordMatch';
 import SpeedTyping from './pages/student/SpeedTyping';
+import MonsterDefense from './pages/student/MonsterDefense';
+import WordScramble from './pages/student/WordScramble';
+import WordSearch from './pages/student/WordSearch';
+import WordWhack from './pages/student/WordWhack';
 import StudentSettings from './pages/student/Settings';
 import NoticeMessageManagement from './pages/academy-admin/NoticeMessageManagement';
 import StudentMessages from './pages/student/Messages';
@@ -76,6 +80,10 @@ function App() {
                         <Route path="games" element={<Games />} />
                         <Route path="games/match" element={<WordMatchGame />} />
                         <Route path="games/typing" element={<SpeedTyping />} />
+                        <Route path="games/defense" element={<MonsterDefense />} />
+                        <Route path="games/scramble" element={<WordScramble />} />
+                        <Route path="games/search" element={<WordSearch />} />
+                        <Route path="games/whack" element={<WordWhack />} />
                         <Route path="settings" element={<StudentSettings />} />
                         <Route path="messages" element={<StudentMessages />} />
                     </Route>
