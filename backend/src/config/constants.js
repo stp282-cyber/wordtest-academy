@@ -1,0 +1,9 @@
+module.exports = {
+  ROLES: {
+    SUPER_ADMIN: 'SUPER_ADMIN',
+    ACADEMY_ADMIN: 'ACADEMY_ADMIN',
+    TEACHER: 'TEACHER',
+    STUDENT: 'STUDENT'
+  },
+  TOKEN_EXPIRY: '24h'
+};
