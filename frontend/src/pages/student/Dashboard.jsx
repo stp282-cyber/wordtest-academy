@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { BookOpen, Trophy, Target, Clock, ArrowUpRight } from 'lucide-react';
+import { BookOpen, Trophy, Target, Clock, ArrowUpRight, Bell } from 'lucide-react';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import client from '../../api/client';
@@ -78,6 +78,38 @@ const Dashboard = () => {
                 <StatCard icon={Trophy} label="Points" value={stats.totalPoints} color="bg-yellow-200" />
                 <StatCard icon={Target} label="Accuracy" value={stats.accuracy} color="bg-green-200" />
                 <StatCard icon={Clock} label="Time" value={stats.studyTime} color="bg-purple-200" />
+            </div>
+
+            {/* Notice Board */}
+            <div className="bg-white border-4 border-black p-6 shadow-neo-lg relative overflow-hidden">
+                <div className="absolute top-0 right-0 bg-yellow-300 px-4 py-1 border-l-4 border-b-4 border-black font-black uppercase text-sm z-10">
+                    Notice Board
+                </div>
+                <h2 className="text-2xl font-black text-black uppercase mb-4 flex items-center">
+                    <Bell className="w-6 h-6 mr-2" /> 공지사항
+                </h2>
+                <div className="space-y-3">
+                    <div className="p-4 border-2 border-black bg-blue-50 hover:bg-blue-100 transition-colors cursor-pointer">
+                        <div className="flex justify-between items-start mb-2">
+                            <span className="bg-black text-white px-2 py-0.5 text-xs font-bold uppercase">Important</span>
+                            <span className="text-xs font-mono font-bold text-slate-500">2024-06-20</span>
+                        </div>
+                        <h3 className="font-black text-lg mb-1">여름방학 특강 안내</h3>
+                        <p className="text-sm font-medium text-slate-700 line-clamp-2">
+                            여름방학을 맞아 문법 특강을 진행합니다. 많은 참여 바랍니다. 자세한 내용은...
+                        </p>
+                    </div>
+                    <div className="p-4 border-2 border-black bg-white hover:bg-slate-50 transition-colors cursor-pointer">
+                        <div className="flex justify-between items-start mb-2">
+                            <span className="bg-slate-200 text-black px-2 py-0.5 text-xs font-bold uppercase">Class A</span>
+                            <span className="text-xs font-mono font-bold text-slate-500">2024-06-21</span>
+                        </div>
+                        <h3 className="font-black text-lg mb-1">중등반 단어 시험 일정 변경</h3>
+                        <p className="text-sm font-medium text-slate-700 line-clamp-2">
+                            다음 주 단어 시험이 월요일에서 화요일로 변경되었습니다. 착오 없으시길 바랍니다.
+                        </p>
+                    </div>
+                </div>
             </div>
 
             {/* Recent Activity & Progress */}

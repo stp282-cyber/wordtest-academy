@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { Menu, Bell, User, LogOut, ChevronRight, X } from 'lucide-react';
+import { Menu, Bell, User, LogOut, ChevronRight, X, BarChart2, Users, BookOpen } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
-const SidebarItem = ({ icon: Icon, label, to, active }) => (
+const SidebarItem = ({ icon: Icon, label, to, active, onClick }) => (
     <Link
         to={to}
+        onClick={onClick}
         className={`
       flex items-center px-4 py-3 mb-3 border-2 transition-all duration-200 group font-bold
       ${active
@@ -31,6 +32,10 @@ const MainLayout = ({ menuItems }) => {
         }
     };
 
+    const handleMenuClick = () => {
+        setSidebarOpen(false);
+    };
+
     return (
         <div className="min-h-screen bg-bg flex font-sans">
             {/* Sidebar */}
@@ -38,7 +43,7 @@ const MainLayout = ({ menuItems }) => {
                 className={`
           fixed inset-y-0 left-0 z-50 bg-warning border-r-4 border-black w-72 transition-transform duration-300
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-          lg:relative lg:translate-x-0
+          lg:sticky lg:top-0 lg:h-screen lg:translate-x-0
         `}
             >
                 <div className="h-full flex flex-col p-6">
@@ -60,8 +65,15 @@ const MainLayout = ({ menuItems }) => {
                                 key={item.to}
                                 {...item}
                                 active={location.pathname === item.to}
+                                onClick={handleMenuClick}
                             />
                         ))}
+                        {/* Academy Admin Specific Menu Items - Hardcoded for now to ensure they appear */}
+                        {user?.role === 'ACADEMY_ADMIN' && (
+                            <>
+                                {/* Items are now passed via menuItems prop */}
+                            </>
+                        )}
                     </nav>
 
                     <div className="mt-auto pt-6 border-t-4 border-black">

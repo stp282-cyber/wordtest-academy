@@ -9,9 +9,12 @@ const CurriculumList = () => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        // Simulate API fetch
-        setTimeout(() => {
-            setCurriculums([
+        // Load from LocalStorage
+        const loadCurriculums = () => {
+            const savedCurriculums = JSON.parse(localStorage.getItem('curriculums') || '[]');
+
+            // Mock Data (Optional: You can remove this if you want purely local data)
+            const mockCurriculums = [
                 {
                     id: 1,
                     name: 'Standard Beginner Course',
@@ -20,25 +23,25 @@ const CurriculumList = () => {
                     studentCount: 12,
                     created: '2024-11-01'
                 },
-                {
-                    id: 2,
-                    name: 'Intensive TOEIC Prep',
-                    description: 'Fast-track course for TOEIC vocabulary.',
-                    wordbookCount: 8,
-                    studentCount: 5,
-                    created: '2024-11-15'
-                },
-                {
-                    id: 3,
-                    name: 'Elementary Grade 3',
-                    description: 'Curriculum aligned with public school textbooks.',
-                    wordbookCount: 12,
-                    studentCount: 20,
-                    created: '2024-11-20'
-                },
-            ]);
+                // ... other mocks if needed
+            ];
+
+            // Merge mock and saved (avoiding duplicates if IDs clash, though mock IDs are low)
+            // For simplicity, let's just show saved ones if any exist, or mix them.
+            // A simple way is to filter out saved ones that might have same IDs as mock, but here we assume unique IDs.
+            // Let's prioritize saved data.
+
+            // If we want to keep the "demo" feel with some data always present:
+            const combined = [...mockCurriculums, ...savedCurriculums];
+
+            // Remove duplicates by ID just in case
+            const uniqueCurriculums = Array.from(new Map(combined.map(item => [item.id, item])).values());
+
+            setCurriculums(uniqueCurriculums);
             setLoading(false);
-        }, 1000);
+        };
+
+        loadCurriculums();
     }, []);
 
     return (
@@ -48,9 +51,11 @@ const CurriculumList = () => {
                     <h1 className="text-3xl font-black text-black uppercase italic">커리큘럼 관리</h1>
                     <p className="text-slate-600 font-bold font-mono">학생들을 위한 학습 경로를 설계하세요</p>
                 </div>
-                <Button className="bg-black text-white hover:bg-slate-800 shadow-neo hover:shadow-neo-lg">
-                    <Plus className="w-5 h-5 mr-2" /> 새 커리큘럼
-                </Button>
+                <Link to="/academy-admin/curriculums/new">
+                    <Button className="bg-black text-white hover:bg-slate-800 shadow-neo hover:shadow-neo-lg">
+                        <Plus className="w-5 h-5 mr-2" /> 새 커리큘럼
+                    </Button>
+                </Link>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -68,7 +73,20 @@ const CurriculumList = () => {
                                         <button className="p-1 hover:bg-slate-100 rounded border-2 border-transparent hover:border-black transition-all" onClick={(e) => { e.preventDefault(); alert('Duplicate'); }}>
                                             <Copy className="w-4 h-4" />
                                         </button>
-                                        <button className="p-1 hover:bg-red-100 rounded border-2 border-transparent hover:border-black transition-all" onClick={(e) => { e.preventDefault(); alert('Delete'); }}>
+                                        <button
+                                            className="p-1 hover:bg-red-100 rounded border-2 border-transparent hover:border-black transition-all"
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                if (window.confirm('정말 이 커리큘럼을 삭제하시겠습니까?')) {
+                                                    const savedCurriculums = JSON.parse(localStorage.getItem('curriculums') || '[]');
+                                                    const newCurriculums = savedCurriculums.filter(c => c.id !== curr.id);
+                                                    localStorage.setItem('curriculums', JSON.stringify(newCurriculums));
+
+                                                    // Update state to remove from UI immediately
+                                                    setCurriculums(prev => prev.filter(c => c.id !== curr.id));
+                                                }
+                                            }}
+                                        >
                                             <Trash2 className="w-4 h-4" />
                                         </button>
                                     </div>
@@ -93,12 +111,12 @@ const CurriculumList = () => {
                 )}
 
                 {/* Add New Card Placeholder */}
-                <button className="h-full min-h-[200px] border-4 border-black border-dashed flex flex-col items-center justify-center text-slate-400 hover:text-black hover:bg-slate-50 hover:border-solid transition-all group">
+                <Link to="/academy-admin/curriculums/new" className="h-full min-h-[200px] border-4 border-black border-dashed flex flex-col items-center justify-center text-slate-400 hover:text-black hover:bg-slate-50 hover:border-solid transition-all group">
                     <div className="w-16 h-16 rounded-full border-4 border-current flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                         <Plus className="w-8 h-8" />
                     </div>
                     <span className="font-black uppercase text-lg">새 커리큘럼 만들기</span>
-                </button>
+                </Link>
             </div>
         </div>
     );

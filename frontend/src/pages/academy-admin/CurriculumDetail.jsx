@@ -1,64 +1,126 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Save, Plus, Trash2, GripVertical, Settings, Book } from 'lucide-react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import { ArrowLeft, Save, Plus, Trash2, GripVertical, X, Book } from 'lucide-react';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
 
 const CurriculumDetail = () => {
     const { id } = useParams();
+    const navigate = useNavigate();
     const [loading, setLoading] = useState(true);
     const [curriculum, setCurriculum] = useState(null);
     const [items, setItems] = useState([]);
     const [showAddModal, setShowAddModal] = useState(false);
-
-    // Mock Data for Available Wordbooks
-    const availableWordbooks = [
-        { id: 101, title: 'Chapter 1: Basic Greetings', count: 20 },
-        { id: 102, title: 'Chapter 2: Numbers & Colors', count: 25 },
-        { id: 103, title: 'Chapter 3: Family Members', count: 18 },
-        { id: 104, title: 'Chapter 4: Food & Drinks', count: 30 },
-        { id: 105, title: 'Chapter 5: Travel Essentials', count: 40 },
-    ];
+    const [availableWordbooks, setAvailableWordbooks] = useState([]);
 
     useEffect(() => {
-        // Simulate API fetch
-        setTimeout(() => {
-            setCurriculum({
-                id,
-                name: 'Standard Beginner Course',
-                description: 'A comprehensive course for absolute beginners.'
-            });
-            setItems([
-                {
-                    id: 1,
-                    wordbookId: 101,
-                    title: 'Chapter 1: Basic Greetings',
-                    settings: { testType: 'typing', wordCount: 10, passScore: 80 }
-                },
-                {
-                    id: 2,
-                    wordbookId: 102,
-                    title: 'Chapter 2: Numbers & Colors',
-                    settings: { testType: 'scramble_select', wordCount: 15, passScore: 80 }
-                },
-                {
-                    id: 3,
-                    wordbookId: 103,
-                    title: 'Chapter 3: Family Members',
-                    settings: { testType: 'scramble_typing', wordCount: 10, passScore: 90 }
-                },
-            ]);
+        // Load Wordbooks from LocalStorage
+        const loadData = () => {
+            const savedWordbooks = localStorage.getItem('wordbooks');
+            if (savedWordbooks) {
+                const parsedWordbooks = JSON.parse(savedWordbooks);
+                // Enhance wordbooks with stats
+                const enhancedWordbooks = parsedWordbooks.map(wb => {
+                    const savedWords = localStorage.getItem(`wordbook_words_${wb.id}`);
+                    const words = savedWords ? JSON.parse(savedWords) : [];
+                    const uniqueUnits = new Set(words.map(w => w.minor).filter(Boolean));
+                    return {
+                        ...wb,
+                        realCount: words.length,
+                        unitCount: uniqueUnits.size || 1, // Avoid division by zero
+                        wordsPerUnit: words.length / (uniqueUnits.size || 1)
+                    };
+                });
+                setAvailableWordbooks(enhancedWordbooks);
+            }
+
+            // Mock Curriculum Data (since we don't have a full backend for this yet)
+            // Mock Curriculum Data (since we don't have a full backend for this yet)
+            if (id === 'new') {
+                setCurriculum({
+                    id: 'new',
+                    name: '새 커리큘럼',
+                    description: '새로운 커리큘럼을 생성합니다.'
+                });
+                setItems([]);
+            } else {
+                // Try to find in localStorage first
+                const savedCurriculums = JSON.parse(localStorage.getItem('curriculums') || '[]');
+                const found = savedCurriculums.find(c => c.id === parseInt(id));
+
+                if (found) {
+                    setCurriculum(found);
+                    setItems(found.items || []);
+                } else {
+                    // Fallback to mock if not found (for legacy/demo purposes)
+                    setCurriculum({
+                        id,
+                        name: 'Standard Beginner Course',
+                        description: 'A comprehensive course for absolute beginners.'
+                    });
+                    setItems([
+                        {
+                            id: 1,
+                            wordbookId: 101, // Mock ID
+                            title: 'Chapter 1: Basic Greetings (Mock)',
+                            settings: { testType: 'typing', wordCount: 10, passScore: 100, dailyGoal: 'manual' }
+                        }
+                    ]);
+                }
+            }
             setLoading(false);
-        }, 1000);
+        };
+
+        loadData();
     }, [id]);
+
+    const handleSave = () => {
+        const savedCurriculums = JSON.parse(localStorage.getItem('curriculums') || '[]');
+
+        const newCurriculum = {
+            ...curriculum,
+            id: id === 'new' ? Date.now() : parseInt(id),
+            items: items,
+            wordbookCount: items.length,
+            studentCount: 0, // Default for new
+            created: new Date().toISOString().split('T')[0]
+        };
+
+        if (id === 'new') {
+            savedCurriculums.push(newCurriculum);
+        } else {
+            const index = savedCurriculums.findIndex(c => c.id === parseInt(id));
+            if (index !== -1) {
+                savedCurriculums[index] = newCurriculum;
+            } else {
+                // If editing a mock one that's not in storage yet, add it
+                savedCurriculums.push(newCurriculum);
+            }
+        }
+
+        localStorage.setItem('curriculums', JSON.stringify(savedCurriculums));
+        alert('커리큘럼이 저장되었습니다.');
+        navigate('/academy-admin/curriculums');
+    };
 
     const handleAddItem = (wordbook) => {
         const newItem = {
-            id: Date.now(), // Temporary ID
+            id: Date.now(),
             wordbookId: wordbook.id,
             title: wordbook.title,
-            settings: { testType: 'typing', wordCount: 20, passScore: 80 } // Default settings
+            // Store stats for calculation
+            stats: {
+                totalWords: wordbook.realCount,
+                unitCount: wordbook.unitCount,
+                wordsPerUnit: wordbook.wordsPerUnit
+            },
+            settings: {
+                testType: 'typing',
+                wordCount: Math.round(wordbook.wordsPerUnit), // Default to 1 unit
+                passScore: 100,
+                dailyGoal: '1_unit' // Default to 1 unit
+            }
         };
         setItems([...items, newItem]);
         setShowAddModal(false);
@@ -72,7 +134,26 @@ const CurriculumDetail = () => {
 
     const handleSettingChange = (index, field, value) => {
         const newItems = [...items];
-        newItems[index].settings[field] = value;
+        const item = newItems[index];
+
+        if (field === 'dailyGoal') {
+            item.settings.dailyGoal = value;
+            if (value !== 'manual' && item.stats) {
+                let multiplier = 1;
+                if (value === '0.5_unit') multiplier = 0.5;
+                if (value === '2_units') multiplier = 2;
+
+                // Calculate new word count
+                item.settings.wordCount = Math.round(item.stats.wordsPerUnit * multiplier);
+            }
+        } else if (field === 'wordCount') {
+            item.settings.wordCount = value;
+            // If manually changed, set dailyGoal to manual
+            item.settings.dailyGoal = 'manual';
+        } else {
+            item.settings[field] = value;
+        }
+
         setItems(newItems);
     };
 
@@ -105,7 +186,7 @@ const CurriculumDetail = () => {
                         <p className="text-slate-600 font-bold font-mono">{curriculum.description}</p>
                     </div>
                 </div>
-                <Button className="bg-green-400 text-black hover:bg-green-500 shadow-neo hover:shadow-neo-lg border-black">
+                <Button onClick={handleSave} className="bg-green-400 text-black hover:bg-green-500 shadow-neo hover:shadow-neo-lg border-black">
                     <Save className="w-5 h-5 mr-2" /> 변경사항 저장
                 </Button>
             </div>
@@ -164,7 +245,7 @@ const CurriculumDetail = () => {
                                                 </div>
 
                                                 {/* Settings Grid */}
-                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 bg-slate-100 p-3 border-2 border-black/10 rounded">
+                                                <div className="grid grid-cols-1 md:grid-cols-4 gap-3 bg-slate-100 p-3 border-2 border-black/10 rounded">
                                                     <div>
                                                         <label className="block text-xs font-black uppercase text-slate-500 mb-1">시험 방식</label>
                                                         <select
@@ -179,12 +260,29 @@ const CurriculumDetail = () => {
                                                         </select>
                                                     </div>
                                                     <div>
+                                                        <label className="block text-xs font-black uppercase text-slate-500 mb-1">일일 학습량</label>
+                                                        <select
+                                                            value={item.settings.dailyGoal || 'manual'}
+                                                            onChange={(e) => handleSettingChange(index, 'dailyGoal', e.target.value)}
+                                                            className="w-full p-1 border-2 border-black text-sm font-bold focus:outline-none"
+                                                        >
+                                                            <option value="manual">직접 입력</option>
+                                                            <option value="0.5_unit">0.5 소단원</option>
+                                                            <option value="1_unit">1 소단원</option>
+                                                            <option value="2_units">2 소단원</option>
+                                                        </select>
+                                                    </div>
+                                                    <div>
                                                         <label className="block text-xs font-black uppercase text-slate-500 mb-1">단어 수</label>
                                                         <input
                                                             type="number"
                                                             value={item.settings.wordCount}
                                                             onChange={(e) => handleSettingChange(index, 'wordCount', parseInt(e.target.value))}
-                                                            className="w-full p-1 border-2 border-black text-sm font-bold focus:outline-none"
+                                                            disabled={item.settings.dailyGoal && item.settings.dailyGoal !== 'manual'}
+                                                            className={`w-full p-1 border-2 border-black text-sm font-bold focus:outline-none ${item.settings.dailyGoal && item.settings.dailyGoal !== 'manual'
+                                                                ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
+                                                                : 'bg-white'
+                                                                }`}
                                                         />
                                                     </div>
                                                     <div>
@@ -244,23 +342,35 @@ const CurriculumDetail = () => {
                         <div className="p-4 border-b-4 border-black bg-yellow-300 flex justify-between items-center">
                             <h3 className="font-black uppercase text-xl">단어장 선택</h3>
                             <button onClick={() => setShowAddModal(false)}>
-                                <Settings className="w-6 h-6 rotate-45" /> {/* Using Settings icon as Close for now or just X */}
+                                <X className="w-6 h-6" />
                             </button>
                         </div>
                         <div className="p-4 max-h-96 overflow-y-auto space-y-2">
-                            {availableWordbooks.map(wb => (
-                                <button
-                                    key={wb.id}
-                                    onClick={() => handleAddItem(wb)}
-                                    className="w-full text-left p-4 border-2 border-black hover:bg-slate-100 hover:shadow-neo-sm transition-all flex justify-between items-center group"
-                                >
-                                    <div>
-                                        <div className="font-black text-lg">{wb.title}</div>
-                                        <div className="text-xs font-mono text-slate-500">{wb.count} words</div>
-                                    </div>
-                                    <Plus className="w-6 h-6 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                </button>
-                            ))}
+                            {availableWordbooks.length === 0 ? (
+                                <div className="text-center py-8 text-slate-500 font-bold">
+                                    사용 가능한 단어장이 없습니다.<br />
+                                    단어장 관리 메뉴에서 먼저 단어장을 만들어주세요.
+                                </div>
+                            ) : (
+                                availableWordbooks.map(wb => (
+                                    <button
+                                        key={wb.id}
+                                        onClick={() => handleAddItem(wb)}
+                                        className="w-full text-left p-4 border-2 border-black hover:bg-slate-100 hover:shadow-neo-sm transition-all flex justify-between items-center group"
+                                    >
+                                        <div>
+                                            <div className="font-black text-lg">{wb.title}</div>
+                                            <div className="text-xs font-mono text-slate-500">
+                                                {wb.realCount} words • {wb.unitCount} units
+                                                <span className="ml-2 text-blue-600">
+                                                    (Avg {Math.round(wb.wordsPerUnit)}/unit)
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <Plus className="w-6 h-6 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                    </button>
+                                ))
+                            )}
                         </div>
                     </Card>
                 </div>
