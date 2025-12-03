@@ -6,7 +6,7 @@
  */
 
 // 환경 변수 설정 (배포 시 .env 파일에서 관리)
-const API_BASE_URL = process.env.REACT_APP_API_URL || null;
+const API_BASE_URL = import.meta.env.VITE_API_URL || null;
 const USE_API = !!API_BASE_URL; // API URL이 있으면 API 사용
 
 /**
@@ -157,7 +157,7 @@ export const deleteCurriculum = async (id) => {
 export const getStudentCurriculums = async (studentId) => {
     if (USE_API) {
         const token = localStorage.getItem('token');
-        const response = await fetch(`${API_BASE_URL}/api/students/${studentId}/curriculums`, {
+        const response = await fetch(`${API_BASE_URL}/api/curriculum/students/${studentId}`, {
             headers: {
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json'
@@ -181,7 +181,7 @@ export const getStudentCurriculums = async (studentId) => {
 export const assignCurriculumToStudent = async (studentId, curriculumData) => {
     if (USE_API) {
         const token = localStorage.getItem('token');
-        const response = await fetch(`${API_BASE_URL}/api/students/${studentId}/curriculums`, {
+        const response = await fetch(`${API_BASE_URL}/api/curriculum/students/${studentId}`, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${token}`,
@@ -214,7 +214,7 @@ export const assignCurriculumToStudent = async (studentId, curriculumData) => {
 export const removeStudentCurriculum = async (studentId, curriculumId) => {
     if (USE_API) {
         const token = localStorage.getItem('token');
-        const response = await fetch(`${API_BASE_URL}/api/students/${studentId}/curriculums/${curriculumId}`, {
+        const response = await fetch(`${API_BASE_URL}/api/curriculum/students/${studentId}/${curriculumId}`, {
             method: 'DELETE',
             headers: {
                 'Authorization': `Bearer ${token}`,

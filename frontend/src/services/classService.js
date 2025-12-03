@@ -4,7 +4,7 @@
  * 배포 시 API 연동을 위한 서비스 레이어
  */
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || null;
+const API_BASE_URL = import.meta.env.VITE_API_URL || null;
 const USE_API = !!API_BASE_URL;
 
 /**

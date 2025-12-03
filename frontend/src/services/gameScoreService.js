@@ -1,4 +1,6 @@
 const STORAGE_KEY = 'word_test_academy_scores';
+const API_BASE_URL = import.meta.env.VITE_API_URL || null;
+const USE_API = !!API_BASE_URL;
 
 // Mock initial data to make it look populated
 const INITIAL_SCORES = [
@@ -9,7 +11,22 @@ const INITIAL_SCORES = [
     { id: 5, name: 'Alex Cho', game: 'Word Scramble', score: 1500, avatar: '📚', date: Date.now() },
 ];
 
-export const getScores = () => {
+export const getScores = async () => {
+    if (USE_API) {
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch(`${API_BASE_URL}/api/games/scores`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            if (response.ok) return await response.json();
+        } catch (e) {
+            console.error('Failed to fetch scores:', e);
+        }
+    }
+
     const stored = localStorage.getItem(STORAGE_KEY);
     if (!stored) {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_SCORES));
@@ -18,8 +35,25 @@ export const getScores = () => {
     return JSON.parse(stored);
 };
 
-export const saveScore = (gameName, score, playerName = 'Student') => {
-    const scores = getScores();
+export const saveScore = async (gameName, score, playerName = 'Student') => {
+    if (USE_API) {
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch(`${API_BASE_URL}/api/games/scores`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ game: gameName, score, playerName })
+            });
+            if (response.ok) return await getScores();
+        } catch (e) {
+            console.error('Failed to save score:', e);
+        }
+    }
+
+    const scores = await getScores(); // Now async
     const newScore = {
         id: Date.now(),
         name: playerName,
@@ -37,10 +71,11 @@ export const saveScore = (gameName, score, playerName = 'Student') => {
     return updatedScores;
 };
 
-export const getTopScores = (limit = 5) => {
-    return getScores().slice(0, limit);
+export const getTopScores = async (limit = 5) => {
+    const scores = await getScores();
+    return scores.slice(0, limit);
 };
 
-export const getAllScores = () => {
-    return getScores();
+export const getAllScores = async () => {
+    return await getScores();
 };

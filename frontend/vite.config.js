@@ -18,7 +18,8 @@ export default defineConfig({
         },
     },
     build: {
-        minify: false,
-        sourcemap: true,
+        // minify: 'terser', // Removed as terser might not be installed
+        sourcemap: false,
+        chunkSizeWarningLimit: 1600,
     }
 })

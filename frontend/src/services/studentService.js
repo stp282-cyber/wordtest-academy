@@ -4,8 +4,8 @@
  * 배포 시 API 연동을 위한 서비스 레이어
  */
 
-const API_BASE_URL = ''; // Use relative path for proxy
-const USE_API = true; // Default to true for production/dev with backend
+const API_BASE_URL = import.meta.env.VITE_API_URL || null;
+const USE_API = !!API_BASE_URL;
 
 /**
  * 모든 학생 목록 조회
