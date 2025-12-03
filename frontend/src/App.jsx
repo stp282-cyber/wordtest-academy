@@ -31,12 +31,15 @@ import WordWhack from './pages/student/WordWhack';
 import StudentSettings from './pages/student/Settings';
 import NoticeMessageManagement from './pages/academy-admin/NoticeMessageManagement';
 import StudentMessages from './pages/student/Messages';
-import { Home, Book, Trophy, Settings as SettingsIcon, Users, BookOpen, GraduationCap, TrendingUp, LayoutDashboard, Building2, Activity, Layers, BarChart2, Bell, MessageSquare } from 'lucide-react';
+import { Home, Book, Trophy, Settings as SettingsIcon, Users, BookOpen, GraduationCap, TrendingUp, LayoutDashboard, Building2, Activity, Layers, BarChart2, Bell, MessageSquare, Headphones } from 'lucide-react';
 import { AuthProvider } from './context/AuthContext';
+import ListeningTestAssign from './pages/academy-admin/ListeningTestAssign';
+import ListeningTestTake from './pages/student/ListeningTestTake'; // Will create next
 
 const studentMenuItems = [
     { icon: Home, label: '대시보드', to: '/student' },
     { icon: Book, label: '나의 학습', to: '/student/learning' },
+    { icon: Headphones, label: '듣기 평가', to: '/student/listening' }, // New
     { icon: Trophy, label: '게임', to: '/student/games' },
     { icon: MessageSquare, label: '쪽지함', to: '/student/messages' },
     { icon: SettingsIcon, label: '설정', to: '/student/settings' },
@@ -44,6 +47,7 @@ const studentMenuItems = [
 
 const academyMenuItems = [
     { icon: LayoutDashboard, label: '대시보드', to: '/academy-admin' },
+    { icon: Headphones, label: '듣기 평가 배정', to: '/academy-admin/listening' }, // New
     { icon: BarChart2, label: '진도관리', to: '/academy-admin/progress' },
     { icon: Users, label: '학생관리', to: '/academy-admin/students' },
     { icon: Layers, label: '커리큘럼', to: '/academy-admin/curriculums' },
@@ -77,6 +81,7 @@ function App() {
                         <Route index element={<StudentDashboard />} />
                         <Route path="learning" element={<Learning />} />
                         <Route path="test" element={<WordTest />} />
+                        <Route path="listening" element={<ListeningTestTake />} /> {/* New */}
                         <Route path="games" element={<Games />} />
                         <Route path="games/match" element={<WordMatchGame />} />
                         <Route path="games/typing" element={<SpeedTyping />} />
@@ -91,6 +96,7 @@ function App() {
                     {/* Academy Admin Routes */}
                     <Route path="/academy-admin" element={<MainLayout menuItems={academyMenuItems} />}>
                         <Route index element={<AcademyDashboard />} />
+                        <Route path="listening" element={<ListeningTestAssign />} /> {/* New */}
                         <Route path="wordbooks" element={<WordbookList />} />
                         <Route path="wordbooks/:id" element={<WordbookDetail />} />
                         <Route path="curriculums" element={<CurriculumList />} />

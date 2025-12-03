@@ -1,0 +1,84 @@
+[
+  {
+    "id": 1764741508583,
+    "studentId": "user-student-1",
+    "level": 4,
+    "count": 5,
+    "topic": "School Life",
+    "questions": [
+      {
+        "id": 1,
+        "dialogue": "Speaker A: This is a mock dialogue for question 1. Speaker B: Yes, we are testing the system.",
+        "question": "What is the purpose of this dialogue? (Mock Q1)",
+        "options": [
+          "To test the system",
+          "To buy food",
+          "To study English",
+          "To sleep",
+          "To play games"
+        ],
+        "answer": 1,
+        "script": "Speaker A: This is a mock dialogue for question 1. Speaker B: Yes, we are testing the system."
+      },
+      {
+        "id": 2,
+        "dialogue": "Speaker A: This is a mock dialogue for question 2. Speaker B: Yes, we are testing the system.",
+        "question": "What is the purpose of this dialogue? (Mock Q2)",
+        "options": [
+          "To test the system",
+          "To buy food",
+          "To study English",
+          "To sleep",
+          "To play games"
+        ],
+        "answer": 1,
+        "script": "Speaker A: This is a mock dialogue for question 2. Speaker B: Yes, we are testing the system."
+      },
+      {
+        "id": 3,
+        "dialogue": "Speaker A: This is a mock dialogue for question 3. Speaker B: Yes, we are testing the system.",
+        "question": "What is the purpose of this dialogue? (Mock Q3)",
+        "options": [
+          "To test the system",
+          "To buy food",
+          "To study English",
+          "To sleep",
+          "To play games"
+        ],
+        "answer": 1,
+        "script": "Speaker A: This is a mock dialogue for question 3. Speaker B: Yes, we are testing the system."
+      },
+      {
+        "id": 4,
+        "dialogue": "Speaker A: This is a mock dialogue for question 4. Speaker B: Yes, we are testing the system.",
+        "question": "What is the purpose of this dialogue? (Mock Q4)",
+        "options": [
+          "To test the system",
+          "To buy food",
+          "To study English",
+          "To sleep",
+          "To play games"
+        ],
+        "answer": 1,
+        "script": "Speaker A: This is a mock dialogue for question 4. Speaker B: Yes, we are testing the system."
+      },
+      {
+        "id": 5,
+        "dialogue": "Speaker A: This is a mock dialogue for question 5. Speaker B: Yes, we are testing the system.",
+        "question": "What is the purpose of this dialogue? (Mock Q5)",
+        "options": [
+          "To test the system",
+          "To buy food",
+          "To study English",
+          "To sleep",
+          "To play games"
+        ],
+        "answer": 1,
+        "script": "Speaker A: This is a mock dialogue for question 5. Speaker B: Yes, we are testing the system."
+      }
+    ],
+    "audioUrl": "/audio/d1a47af9-86da-43b2-adb4-cfc6f694e53d.mp3",
+    "assignedAt": "2025-12-03T05:58:28.583Z",
+    "status": "assigned"
+  }
+]

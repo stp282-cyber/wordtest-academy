@@ -11,6 +11,17 @@ export const AuthProvider = ({ children }) => {
         // Check for stored token/user on mount
         const storedUser = localStorage.getItem('user');
         const token = localStorage.getItem('token');
+
+        // Validate token for non-ASCII characters (Fix for "String contains non ISO-8859-1 code point" error)
+        if (token && /[^\x00-\x7F]/.test(token)) {
+            console.warn('Found invalid token in localStorage, clearing...');
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            setUser(null);
+            setLoading(false);
+            return;
+        }
+
         if (storedUser && token) {
             setUser(JSON.parse(storedUser));
         }
@@ -21,50 +32,50 @@ export const AuthProvider = ({ children }) => {
         try {
             console.log('Login attempt:', { username, password: '***' });
 
-            // First, check if this is a student account in localStorage
-            const savedStudents = localStorage.getItem('students');
-            console.log('Saved students:', savedStudents ? 'Found' : 'Not found');
-            if (savedStudents) {
-                const students = JSON.parse(savedStudents);
-                console.log('Total students:', students.length);
-                console.log('Looking for username:', username);
-                console.log('Student IDs:', students.map(s => s.studentId));
+            // 1. Try Backend Authentication First
+            try {
+                const response = await client.post('/auth/login', { username, password });
+                const { token, user } = response.data;
 
-                const student = students.find(s =>
-                    (s.studentId === username || s.id === username) && s.password === password
-                );
+                localStorage.setItem('token', token);
+                localStorage.setItem('user', JSON.stringify(user));
+                setUser(user);
+                return user;
+            } catch (backendError) {
+                console.warn('Backend login failed, checking local storage fallback...', backendError);
 
-                console.log('Student found:', student ? 'Yes' : 'No');
+                // 2. Fallback to LocalStorage (Legacy/Offline Mode)
+                const savedStudents = localStorage.getItem('students');
+                if (savedStudents) {
+                    const students = JSON.parse(savedStudents);
+                    const student = students.find(s =>
+                        (s.studentId === username || s.id === username) && s.password === password
+                    );
 
-                if (student) {
-                    // Student found in localStorage
-                    const user = {
-                        id: student.id,
-                        username: student.studentId || student.id,
-                        role: 'STUDENT',
-                        full_name: student.name,
-                        email: student.email,
-                        className: student.className
-                    };
+                    if (student) {
+                        const user = {
+                            id: student.id,
+                            username: student.studentId || student.id,
+                            role: 'STUDENT',
+                            full_name: student.name,
+                            email: student.email,
+                            className: student.className
+                        };
 
-                    // Create a mock token for localStorage-based auth
-                    const token = 'localStorage_student_' + student.id;
+                        // Encode token to prevent "non ISO-8859-1" header errors
+                        // Using btoa to ensure ASCII characters
+                        const token = btoa('localStorage_student_' + encodeURIComponent(student.id));
 
-                    localStorage.setItem('token', token);
-                    localStorage.setItem('user', JSON.stringify(user));
-                    setUser(user);
-                    return user;
+                        localStorage.setItem('token', token);
+                        localStorage.setItem('user', JSON.stringify(user));
+                        setUser(user);
+                        return user;
+                    }
                 }
+
+                // If both fail, throw the backend error
+                throw backendError;
             }
-
-            // If not a student, try backend authentication
-            const response = await client.post('/auth/login', { username, password });
-            const { token, user } = response.data;
-
-            localStorage.setItem('token', token);
-            localStorage.setItem('user', JSON.stringify(user));
-            setUser(user);
-            return user;
         } catch (error) {
             console.error('Login failed:', error);
             throw error;

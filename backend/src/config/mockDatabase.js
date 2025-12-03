@@ -109,6 +109,26 @@ class MockConnection {
             return { rows: user ? [user] : [] };
         }
 
+        if (sqlLower.includes('from users') && sqlLower.includes('academy_id = :academyid') && sqlLower.includes('role = :role')) {
+            const academyId = normalizedBinds.academyid;
+            const role = normalizedBinds.role;
+            const users = store.users.filter(u => u.academy_id === academyId && u.role === role);
+
+            // Map to uppercase keys as per Oracle driver behavior
+            const mappedUsers = users.map(u => ({
+                ID: u.id,
+                ACADEMY_ID: u.academy_id,
+                USERNAME: u.username,
+                NAME: u.full_name,
+                ROLE: u.role,
+                PHONE: u.phone,
+                EMAIL: u.email,
+                CREATED_AT: u.created_at,
+                LAST_LOGIN: u.last_login
+            }));
+            return { rows: mappedUsers };
+        }
+
         // 1.5 Academy queries
         if (sqlLower.includes('select * from academies') && !sqlLower.includes('where')) {
             // Find All

@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const http = require('http');
+const path = require('path');
 const { Server } = require('socket.io');
 // const database = require('./config/database'); // Real DB
 const database = require('./config/mockDatabase'); // Mock DB for testing
@@ -46,8 +47,11 @@ app.use('/api/announcements', require('./routes/announcements'));
 app.use('/api/messages', require('./routes/messages'));
 app.use('/api/backup', require('./routes/backup'));
 app.use('/api/analytics', require('./routes/analytics'));
+app.use('/api/listening', require('./routes/listeningTests'));
 
-const path = require('path');
+// Serve generated audio files
+app.use('/audio', express.static(path.join(__dirname, '../../public/audio')));
+
 
 // Serve static files from the React app
 // Adjust path based on where server.js is located (backend/src/server.js)
