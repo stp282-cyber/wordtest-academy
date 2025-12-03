@@ -120,6 +120,36 @@ const WordTest = () => {
         };
     }, [navigate]);
 
+    // Save history when test is complete
+    useEffect(() => {
+        if (testPhase === 'complete' && lessonData) {
+            const storedUser = localStorage.getItem('user');
+            if (storedUser) {
+                const user = JSON.parse(storedUser);
+                const historyKey = `learning_history_${user.id}`;
+                const history = JSON.parse(localStorage.getItem(historyKey) || '[]');
+
+                // Check if already saved to avoid duplicates (though useEffect should run once if dep is correct)
+                // We'll use a simple check
+                const newEntry = {
+                    curriculumId: lessonData.curriculum.id,
+                    date: lessonData.schedule.date, // This is the scheduled date
+                    completedAt: new Date().toISOString(),
+                    mainScore,
+                    reviewScore
+                };
+
+                // Remove existing entry for same date/curriculum if any (overwrite)
+                const filteredHistory = history.filter(h =>
+                    !(h.curriculumId === newEntry.curriculumId && h.date === newEntry.date)
+                );
+
+                filteredHistory.push(newEntry);
+                localStorage.setItem(historyKey, JSON.stringify(filteredHistory));
+            }
+        }
+    }, [testPhase, lessonData, mainScore, reviewScore]);
+
     // TTS function
     const playTTS = (text) => {
         if (!window.speechSynthesis) return;
@@ -990,6 +1020,8 @@ const WordTest = () => {
             </div>
         );
     };
+
+
 
     return (
         <div className="min-h-screen bg-slate-100 p-4 md:p-8 select-none">

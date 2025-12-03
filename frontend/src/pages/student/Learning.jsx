@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Play } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Play, Check } from 'lucide-react';
 import Button from '../../components/common/Button';
 import { useAuth } from '../../context/AuthContext';
 import { generateScheduleForDate } from '../../utils/scheduleUtils';
@@ -10,13 +10,21 @@ const Learning = () => {
     const [visibleWeeks, setVisibleWeeks] = useState(4);
     const [curriculums, setCurriculums] = useState([]);
 
-    // Load curriculums from localStorage
+    const [learningHistory, setLearningHistory] = useState([]);
+
+    // Load curriculums and history from localStorage
     useEffect(() => {
         if (user) {
             const storageKey = `curriculums_${user.id}`;
             const savedCurriculums = localStorage.getItem(storageKey);
             if (savedCurriculums) {
                 setCurriculums(JSON.parse(savedCurriculums));
+            }
+
+            const historyKey = `learning_history_${user.id}`;
+            const savedHistory = localStorage.getItem(historyKey);
+            if (savedHistory) {
+                setLearningHistory(JSON.parse(savedHistory));
             }
         }
     }, [user]);
@@ -69,9 +77,6 @@ const Learning = () => {
             if (!dayLabel) return;
 
             // Find the date for this day (Mon-Fri)
-            // We need to find the index of this dayId in our weekDays array?
-            // No, weekDays is ['월', '화'...]
-            // We need to find the index of dayId ('mon', 'tue'...) in standard week
             const standardDays = ['mon', 'tue', 'wed', 'thu', 'fri'];
             const dayIndex = standardDays.indexOf(dayId);
 
@@ -115,6 +120,63 @@ const Learning = () => {
         '금': { bg: 'bg-yellow-300', hover: 'hover:bg-yellow-50', border: 'border-black' },
     };
 
+    const getScheduleStatus = (scheduleItem, curriculumId) => {
+        if (!scheduleItem) return 'none';
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const scheduleDate = new Date(scheduleItem.date);
+        scheduleDate.setHours(0, 0, 0, 0);
+
+        // Check completion
+        const isCompleted = learningHistory.some(h =>
+            h.curriculumId === curriculumId && h.date === scheduleItem.date
+        );
+
+        if (isCompleted) return 'completed';
+        if (scheduleDate.getTime() === today.getTime()) return 'today';
+        if (scheduleDate.getTime() < today.getTime()) return 'past-incomplete';
+        return 'future';
+    };
+
+    const getStatusStyles = (status) => {
+        switch (status) {
+            case 'completed':
+                return {
+                    card: 'bg-slate-100 border-slate-400 opacity-80',
+                    header: 'bg-slate-600 text-slate-200 border-slate-600',
+                    footer: 'bg-slate-200 text-slate-500 border-slate-400',
+                    text: 'text-slate-500',
+                    badge: 'bg-green-500 text-white border-green-700'
+                };
+            case 'today':
+                return {
+                    card: 'bg-white border-black ring-4 ring-yellow-300 ring-opacity-50',
+                    header: 'bg-blue-600 text-white border-black',
+                    footer: 'bg-yellow-300 text-black border-black',
+                    text: 'text-black',
+                    badge: 'bg-blue-500 text-white border-black'
+                };
+            case 'past-incomplete':
+                return {
+                    card: 'bg-red-50 border-red-500',
+                    header: 'bg-red-500 text-white border-red-700',
+                    footer: 'bg-red-200 text-red-900 border-red-400',
+                    text: 'text-red-900',
+                    badge: 'bg-red-500 text-white border-red-700'
+                };
+            default: // future
+                return {
+                    card: 'bg-white border-black',
+                    header: 'bg-black text-white border-black',
+                    footer: 'bg-yellow-300 text-black border-black',
+                    text: 'text-black',
+                    badge: 'bg-black text-white border-black'
+                };
+        }
+    };
+
     return (
         <div className="space-y-8">
             {/* Header */}
@@ -138,20 +200,23 @@ const Learning = () => {
             <div className="space-y-12">
                 {Array.from({ length: visibleWeeks }).map((_, weekIndex) => {
                     const weekDates = getWeekDates(currentDate, weekIndex);
+
                     return (
                         <div key={weekIndex} className="space-y-4">
                             <h3 className="font-black text-xl bg-yellow-300 inline-block px-4 py-2 border-2 border-black shadow-neo">
                                 {weekIndex === 0 ? '이번 주' : `${weekIndex}주 후`} <span className="text-sm font-medium ml-2">({weekDates[0]} ~ {weekDates[4]})</span>
                             </h3>
-                            <div className="overflow-x-auto">
-                                <table className="w-full border-collapse border-4 border-black bg-white shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
+
+                            {/* Desktop View (Table) */}
+                            <div className="hidden md:block overflow-x-auto pb-4">
+                                <table className="w-full min-w-[1000px] border-collapse border-4 border-black bg-white shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] table-fixed">
                                     <thead>
                                         <tr>
                                             <th className="border-b-4 border-r-4 border-black p-4 bg-black text-white w-48 text-left">
                                                 <span className="font-black text-xl italic tracking-wider">CURRICULUM</span>
                                             </th>
                                             {weekDays.map((day, i) => (
-                                                <th key={day} className={`border-b-4 border-r-4 border-black p-2 ${dayColors[day].bg} w-1/5 transition-colors relative group`}>
+                                                <th key={day} className={`border-b-4 border-r-4 border-black p-2 ${dayColors[day].bg} transition-colors relative group`}>
                                                     <div className="flex flex-col items-start relative z-10">
                                                         <span className="font-black text-3xl uppercase italic tracking-tighter transform -rotate-2 group-hover:rotate-0 transition-transform">{day}</span>
                                                         <span className="text-[10px] font-black bg-white px-1.5 py-0.5 border-2 border-black shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] mt-1">{weekDates[i]}</span>
@@ -183,49 +248,74 @@ const Learning = () => {
                                                         </td>
                                                         {weekDays.map((day) => {
                                                             const scheduleItem = schedule[day];
+                                                            const status = getScheduleStatus(scheduleItem, curr.id);
+                                                            const styles = getStatusStyles(status);
+
                                                             return (
                                                                 <td key={day} className={`border-r-4 border-b-4 border-black p-2 align-top h-48 ${dayColors[day].hover} transition-colors duration-200`}>
                                                                     {scheduleItem ? (
-                                                                        <div className="h-full flex flex-col justify-between bg-white p-3 border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-1 transition-all">
-                                                                            <div className="space-y-1.5 text-sm">
-                                                                                <div className="font-black text-base border-b border-black pb-1 mb-2">{scheduleItem.textbook}</div>
+                                                                        <div className={`h-full flex flex-col border-2 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-1 transition-all overflow-hidden group/card relative ${styles.card}`}>
+                                                                            {/* Header */}
+                                                                            <div className={`p-2 text-center border-b-2 ${styles.header}`}>
+                                                                                <div className="font-black text-xs truncate" title={scheduleItem.textbook}>{scheduleItem.textbook}</div>
+                                                                            </div>
 
-                                                                                {scheduleItem.major && (
+                                                                            {/* Content */}
+                                                                            <div className={`flex-1 p-2 flex flex-col items-center justify-center text-center gap-1 min-h-0 pb-10 ${status === 'completed' ? 'bg-slate-50' : 'bg-white'}`}>
+                                                                                {status === 'completed' && (
+                                                                                    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-0 opacity-10 pointer-events-none">
+                                                                                        <Check className="w-20 h-20 text-black" />
+                                                                                    </div>
+                                                                                )}
+                                                                                {scheduleItem.major ? (
                                                                                     <>
-                                                                                        <div className="flex justify-between items-center">
-                                                                                            <span className="text-xs text-slate-500">대단원:</span>
-                                                                                            <span className="font-bold text-sm">{scheduleItem.major}</span>
+                                                                                        <div className={`text-[10px] font-bold uppercase tracking-tight truncate w-full ${styles.text}`}>
+                                                                                            {scheduleItem.major} <span className="opacity-50">|</span> {scheduleItem.minor}
                                                                                         </div>
-                                                                                        <div className="flex justify-between items-center">
-                                                                                            <span className="text-xs text-slate-500">소단원:</span>
-                                                                                            <span className="font-bold text-sm">{scheduleItem.minor}</span>
+                                                                                        <div className={`font-black text-sm leading-tight line-clamp-2 break-keep ${styles.text}`} title={scheduleItem.unitName}>
+                                                                                            {scheduleItem.unitName}
                                                                                         </div>
-                                                                                        <div className="flex justify-between items-center">
-                                                                                            <span className="text-xs text-slate-500">단원명:</span>
-                                                                                            <span className="font-medium text-sm">{scheduleItem.unitName}</span>
+                                                                                    </>
+                                                                                ) : (
+                                                                                    <>
+                                                                                        <div className={`text-[10px] font-bold uppercase tracking-tight truncate w-full ${styles.text}`}>
+                                                                                            {scheduleItem.unit}
                                                                                         </div>
-                                                                                        <div className="bg-blue-50 border border-blue-200 p-1.5 mt-2">
-                                                                                            <div className="text-xs text-blue-600 font-bold">진도 범위</div>
-                                                                                            <div className="text-xs font-mono mt-0.5">{scheduleItem.wordRange}</div>
-                                                                                        </div>
-                                                                                        <div className="flex justify-between items-center bg-yellow-50 border border-yellow-300 p-1.5 mt-1">
-                                                                                            <span className="text-xs font-bold text-yellow-800">{scheduleItem.date}</span>
-                                                                                            <span className="text-xs font-black text-yellow-900">{scheduleItem.wordCount}개 단어</span>
+                                                                                        <div className={`font-black text-sm leading-tight line-clamp-2 break-keep ${styles.text}`}>
+                                                                                            {scheduleItem.subUnit}
                                                                                         </div>
                                                                                     </>
                                                                                 )}
                                                                             </div>
-                                                                            <Button
-                                                                                size="sm"
-                                                                                className="w-full mt-2 bg-green-400 hover:bg-green-500 border-black text-black font-black shadow-neo-sm"
-                                                                                onClick={() => handleStartLesson(curr, scheduleItem)}
-                                                                            >
-                                                                                <Play className="w-4 h-4 mr-1" />
-                                                                                수업 시작
-                                                                            </Button>
+
+                                                                            {/* Footer Info */}
+                                                                            <div className={`grid grid-cols-2 border-t-2 divide-x-2 absolute bottom-0 left-0 right-0 ${styles.footer} ${status === 'completed' ? 'divide-slate-400' : 'divide-black'}`}>
+                                                                                <div className="p-1.5 text-center flex flex-col justify-center">
+                                                                                    <div className="text-[9px] font-black opacity-60 uppercase leading-none mb-0.5">RANGE</div>
+                                                                                    <div className="font-black text-xs truncate">{scheduleItem.wordRange || scheduleItem.range}</div>
+                                                                                </div>
+                                                                                <div className="p-1.5 text-center flex flex-col justify-center">
+                                                                                    <div className="text-[9px] font-black opacity-60 uppercase leading-none mb-0.5">WORDS</div>
+                                                                                    <div className="font-black text-xs">{scheduleItem.wordCount || '-'}</div>
+                                                                                </div>
+                                                                            </div>
+
+                                                                            {/* Play Overlay */}
+                                                                            <div className={`absolute inset-0 bg-black/80 flex items-center justify-center opacity-0 group-hover/card:opacity-100 transition-opacity z-10 backdrop-blur-sm`}>
+                                                                                <Button
+                                                                                    size="sm"
+                                                                                    className={`${status === 'completed' ? 'bg-slate-400 hover:bg-slate-500' : 'bg-green-400 hover:bg-green-500'} border-2 border-black text-black font-black shadow-neo-sm transform hover:scale-110 transition-transform`}
+                                                                                    onClick={() => handleStartLesson(curr, scheduleItem)}
+                                                                                >
+                                                                                    <Play className="w-4 h-4 mr-1" />
+                                                                                    {status === 'completed' ? 'REVIEW' : 'START'}
+                                                                                </Button>
+                                                                            </div>
                                                                         </div>
                                                                     ) : (
-                                                                        <div className="h-full w-full"></div>
+                                                                        <div className="h-full w-full flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                                                                            <button className="text-2xl text-slate-300 hover:text-black font-black">+</button>
+                                                                        </div>
                                                                     )}
                                                                 </td>
                                                             );
@@ -236,6 +326,97 @@ const Learning = () => {
                                         )}
                                     </tbody>
                                 </table>
+                            </div>
+
+                            {/* Mobile View (List) */}
+                            <div className="md:hidden space-y-6">
+                                {weekDays.map((day, dayIndex) => {
+                                    // Gather lessons for this day
+                                    const dayLessons = curriculums.map(curr => {
+                                        const schedule = generateSchedule(curr, weekIndex);
+                                        return { curr, item: schedule[day] };
+                                    }).filter(entry => entry.item);
+
+                                    if (dayLessons.length === 0) return null;
+
+                                    return (
+                                        <div key={day} className="bg-white border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] overflow-hidden">
+                                            {/* Day Header */}
+                                            <div className={`p-4 flex justify-between items-center border-b-4 border-black ${dayColors[day].bg}`}>
+                                                <div className="flex items-center gap-3">
+                                                    <span className="font-black text-3xl italic">{day}</span>
+                                                    <span className="text-xs font-bold bg-white px-2 py-1 border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                                                        {weekDates[dayIndex]}
+                                                    </span>
+                                                </div>
+                                                <div className="text-xs font-black uppercase tracking-widest opacity-60">
+                                                    {dayLessons.length} Tasks
+                                                </div>
+                                            </div>
+
+                                            {/* Lessons List */}
+                                            <div className="divide-y-4 divide-black">
+                                                {dayLessons.map(({ curr, item }) => {
+                                                    const status = getScheduleStatus(item, curr.id);
+                                                    const styles = getStatusStyles(status);
+
+                                                    return (
+                                                        <div key={curr.id} className={`p-4 ${status === 'completed' ? 'bg-slate-50 opacity-90' : 'bg-white'}`}>
+                                                            <div className="flex justify-between items-start gap-4 mb-3">
+                                                                <div>
+                                                                    <div className="text-xs font-bold text-slate-500 mb-1">{curr.title}</div>
+                                                                    <div className="font-black text-lg leading-tight">{item.textbook}</div>
+                                                                </div>
+                                                                <span className={`text-[10px] font-black px-2 py-1 border-2 border-black uppercase ${styles.badge}`}>
+                                                                    {status === 'past-incomplete' ? 'Overdue' : status}
+                                                                </span>
+                                                            </div>
+
+                                                            <div className={`border-2 border-black p-3 mb-4 relative ${styles.card} shadow-sm`}>
+                                                                {status === 'completed' && (
+                                                                    <div className="absolute right-2 top-1/2 transform -translate-y-1/2 opacity-20">
+                                                                        <Check className="w-12 h-12 text-black" />
+                                                                    </div>
+                                                                )}
+
+                                                                {item.major ? (
+                                                                    <div className="space-y-1 relative z-10">
+                                                                        <div className="text-xs font-bold opacity-70">{item.major} | {item.minor}</div>
+                                                                        <div className="font-black text-base">{item.unitName}</div>
+                                                                    </div>
+                                                                ) : (
+                                                                    <div className="space-y-1 relative z-10">
+                                                                        <div className="text-xs font-bold opacity-70">{item.unit}</div>
+                                                                        <div className="font-black text-base">{item.subUnit}</div>
+                                                                    </div>
+                                                                )}
+
+                                                                <div className="mt-3 pt-3 border-t-2 border-dashed border-black/20 flex gap-4 text-xs">
+                                                                    <div>
+                                                                        <span className="font-bold opacity-60 mr-1">RANGE:</span>
+                                                                        <span className="font-black">{item.wordRange || item.range}</span>
+                                                                    </div>
+                                                                    <div>
+                                                                        <span className="font-bold opacity-60 mr-1">WORDS:</span>
+                                                                        <span className="font-black">{item.wordCount || '-'}</span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+
+                                                            <Button
+                                                                className={`w-full py-3 text-sm font-black border-2 border-black shadow-neo-sm flex items-center justify-center gap-2 ${status === 'completed' ? 'bg-slate-200 text-slate-500' : 'bg-black text-white hover:bg-slate-800'}`}
+                                                                onClick={() => handleStartLesson(curr, item)}
+                                                            >
+                                                                <Play className="w-4 h-4" />
+                                                                {status === 'completed' ? '다시 학습하기 (Review)' : '학습 시작하기'}
+                                                            </Button>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </div>
                     );

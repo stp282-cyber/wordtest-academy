@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Calendar, Settings, Trash2, Clock, ChevronLeft, ChevronRight, Search, Plus } from 'lucide-react';
+import { X, Calendar, Settings, Trash2, Clock, ChevronLeft, ChevronRight, Search, Plus, Check } from 'lucide-react';
 import Button from '../common/Button';
 import LearningSettingsModal from './LearningSettingsModal';
 import LearningDaysModal from './LearningDaysModal';
@@ -19,7 +19,9 @@ const ClassLogModal = ({ isOpen, onClose, student }) => {
     const [visibleWeeks, setVisibleWeeks] = useState(4);
     const [curriculums, setCurriculums] = useState([]);
 
-    // Load curriculums from localStorage
+    const [learningHistory, setLearningHistory] = useState([]);
+
+    // Load curriculums and history from localStorage
     useEffect(() => {
         if (student && isOpen) {
             const storageKey = `curriculums_${student.id}`;
@@ -28,6 +30,14 @@ const ClassLogModal = ({ isOpen, onClose, student }) => {
                 setCurriculums(JSON.parse(savedCurriculums));
             } else {
                 setCurriculums([]); // Reset if no data found
+            }
+
+            const historyKey = `learning_history_${student.id}`;
+            const savedHistory = localStorage.getItem(historyKey);
+            if (savedHistory) {
+                setLearningHistory(JSON.parse(savedHistory));
+            } else {
+                setLearningHistory([]);
             }
         }
     }, [student, isOpen]);
@@ -228,17 +238,74 @@ const ClassLogModal = ({ isOpen, onClose, student }) => {
         setProgressModalOpen(true);
     };
 
-    const handleLoadMore = () => {
-        setVisibleWeeks(prev => prev + 4);
-    };
-
-    // Day colors configuration - Unified to Yellow for Neo-Brutalism style
+    // Day colors configuration
     const dayColors = {
         '월': { bg: 'bg-yellow-300', hover: 'hover:bg-yellow-50', border: 'border-black' },
         '화': { bg: 'bg-yellow-300', hover: 'hover:bg-yellow-50', border: 'border-black' },
         '수': { bg: 'bg-yellow-300', hover: 'hover:bg-yellow-50', border: 'border-black' },
         '목': { bg: 'bg-yellow-300', hover: 'hover:bg-yellow-50', border: 'border-black' },
         '금': { bg: 'bg-yellow-300', hover: 'hover:bg-yellow-50', border: 'border-black' },
+    };
+
+    const getScheduleStatus = (scheduleItem, curriculumId) => {
+        if (!scheduleItem) return 'none';
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const scheduleDate = new Date(scheduleItem.date);
+        scheduleDate.setHours(0, 0, 0, 0);
+
+        // Check completion
+        const isCompleted = learningHistory.some(h =>
+            h.curriculumId === curriculumId && h.date === scheduleItem.date
+        );
+
+        if (isCompleted) return 'completed';
+        if (scheduleDate.getTime() === today.getTime()) return 'today';
+        if (scheduleDate.getTime() < today.getTime()) return 'past-incomplete';
+        return 'future';
+    };
+
+    const getStatusStyles = (status) => {
+        switch (status) {
+            case 'completed':
+                return {
+                    card: 'bg-slate-100 border-slate-400 opacity-80',
+                    header: 'bg-slate-600 text-slate-200 border-slate-600',
+                    footer: 'bg-slate-200 text-slate-500 border-slate-400',
+                    text: 'text-slate-500',
+                    badge: 'bg-green-500 text-white border-green-700'
+                };
+            case 'today':
+                return {
+                    card: 'bg-white border-black ring-4 ring-yellow-300 ring-opacity-50',
+                    header: 'bg-blue-600 text-white border-black',
+                    footer: 'bg-yellow-300 text-black border-black',
+                    text: 'text-black',
+                    badge: 'bg-blue-500 text-white border-black'
+                };
+            case 'past-incomplete':
+                return {
+                    card: 'bg-red-50 border-red-500',
+                    header: 'bg-red-500 text-white border-red-700',
+                    footer: 'bg-red-200 text-red-900 border-red-400',
+                    text: 'text-red-900',
+                    badge: 'bg-red-500 text-white border-red-700'
+                };
+            default: // future
+                return {
+                    card: 'bg-white border-black',
+                    header: 'bg-black text-white border-black',
+                    footer: 'bg-yellow-300 text-black border-black',
+                    text: 'text-black',
+                    badge: 'bg-black text-white border-black'
+                };
+        }
+    };
+
+    const handleLoadMore = () => {
+        setVisibleWeeks(prev => prev + 4);
     };
 
     return (
@@ -292,14 +359,14 @@ const ClassLogModal = ({ isOpen, onClose, student }) => {
                                     {weekIndex === 0 ? '이번 주' : `${weekIndex}주 후`} <span className="text-sm font-medium ml-2">({weekDates[0]} ~ {weekDates[4]})</span>
                                 </h3>
                                 <div className="overflow-x-auto">
-                                    <table className="w-full border-collapse border-4 border-black bg-white shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
+                                    <table className="w-full border-collapse border-4 border-black bg-white shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] table-fixed">
                                         <thead>
                                             <tr>
                                                 <th className="border-b-4 border-r-4 border-black p-4 bg-black text-white w-48 text-left">
                                                     <span className="font-black text-xl italic tracking-wider">CURRICULUM</span>
                                                 </th>
                                                 {weekDays.map((day, i) => (
-                                                    <th key={day} className={`border-b-4 border-r-4 border-black p-2 ${dayColors[day].bg} w-1/5 transition-colors relative group`}>
+                                                    <th key={day} className={`border-b-4 border-r-4 border-black p-2 ${dayColors[day].bg} transition-colors relative group`}>
                                                         <div className="flex flex-col items-start relative z-10">
                                                             <span className="font-black text-3xl uppercase italic tracking-tighter transform -rotate-2 group-hover:rotate-0 transition-transform">{day}</span>
                                                             <span className="text-[10px] font-black bg-white px-1.5 py-0.5 border-2 border-black shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] mt-1">{weekDates[i]}</span>
@@ -364,47 +431,55 @@ const ClassLogModal = ({ isOpen, onClose, student }) => {
                                                             </td>
                                                             {weekDays.map((day) => {
                                                                 const scheduleItem = schedule[day];
+                                                                const status = getScheduleStatus(scheduleItem, curr.id);
+                                                                const styles = getStatusStyles(status);
+
                                                                 return (
                                                                     <td key={day} className={`border-r-4 border-b-4 border-black p-2 align-top h-48 ${dayColors[day].hover} transition-colors duration-200`}>
                                                                         {scheduleItem ? (
-                                                                            <div className="h-full flex flex-col justify-between bg-white p-3 border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-1 transition-all">
-                                                                                <div className="space-y-1.5 text-sm">
-                                                                                    <div className="font-black text-base border-b border-black pb-1 mb-2">{scheduleItem.textbook}</div>
+                                                                            <div className={`h-full flex flex-col justify-between p-3 border-2 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] hover:-translate-y-1 transition-all relative ${styles.card}`}>
+                                                                                {status === 'completed' && (
+                                                                                    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-0 opacity-10 pointer-events-none">
+                                                                                        <Check className="w-20 h-20 text-black" />
+                                                                                    </div>
+                                                                                )}
+                                                                                <div className="space-y-1.5 text-sm relative z-10">
+                                                                                    <div className={`font-black text-base border-b pb-1 mb-2 ${styles.header}`}>{scheduleItem.textbook}</div>
 
                                                                                     {scheduleItem.major ? (
                                                                                         <>
                                                                                             <div className="flex justify-between items-center">
-                                                                                                <span className="text-xs text-slate-500">대단원:</span>
-                                                                                                <span className="font-bold text-sm">{scheduleItem.major}</span>
+                                                                                                <span className={`text-xs ${styles.text}`}>대단원:</span>
+                                                                                                <span className={`font-bold text-sm ${styles.text}`}>{scheduleItem.major}</span>
                                                                                             </div>
                                                                                             <div className="flex justify-between items-center">
-                                                                                                <span className="text-xs text-slate-500">소단원:</span>
-                                                                                                <span className="font-bold text-sm">{scheduleItem.minor}</span>
+                                                                                                <span className={`text-xs ${styles.text}`}>소단원:</span>
+                                                                                                <span className={`font-bold text-sm ${styles.text}`}>{scheduleItem.minor}</span>
                                                                                             </div>
                                                                                             <div className="flex justify-between items-center">
-                                                                                                <span className="text-xs text-slate-500">단원명:</span>
-                                                                                                <span className="font-medium text-sm">{scheduleItem.unitName}</span>
+                                                                                                <span className={`text-xs ${styles.text}`}>단원명:</span>
+                                                                                                <span className={`font-medium text-sm ${styles.text}`}>{scheduleItem.unitName}</span>
                                                                                             </div>
-                                                                                            <div className="bg-blue-50 border border-blue-200 p-1.5 mt-2">
-                                                                                                <div className="text-xs text-blue-600 font-bold">진도 범위</div>
+                                                                                            <div className={`border p-1.5 mt-2 ${styles.footer}`}>
+                                                                                                <div className="text-xs font-bold">진도 범위</div>
                                                                                                 <div className="text-xs font-mono mt-0.5">{scheduleItem.wordRange}</div>
                                                                                             </div>
-                                                                                            <div className="flex justify-between items-center bg-yellow-50 border border-yellow-300 p-1.5 mt-1">
-                                                                                                <span className="text-xs font-bold text-yellow-800">{scheduleItem.date}</span>
-                                                                                                <span className="text-xs font-black text-yellow-900">{scheduleItem.wordCount}개 단어</span>
+                                                                                            <div className={`flex justify-between items-center border p-1.5 mt-1 ${styles.footer}`}>
+                                                                                                <span className="text-xs font-bold">{scheduleItem.date}</span>
+                                                                                                <span className="text-xs font-black">{scheduleItem.wordCount}개 단어</span>
                                                                                             </div>
                                                                                         </>
                                                                                     ) : (
                                                                                         <>
                                                                                             <div className="flex justify-between items-center group/item">
-                                                                                                <span className="font-medium">{scheduleItem.unit}</span>
+                                                                                                <span className={`font-medium ${styles.text}`}>{scheduleItem.unit}</span>
                                                                                                 <button className="text-xs text-red-500 opacity-0 group-hover/item:opacity-100 hover:text-red-700 font-bold">×</button>
                                                                                             </div>
                                                                                             <div className="flex justify-between items-center group/item">
-                                                                                                <span className="text-slate-600">{scheduleItem.subUnit}</span>
+                                                                                                <span className={`text-slate-600 ${styles.text}`}>{scheduleItem.subUnit}</span>
                                                                                                 <button className="text-xs text-red-500 opacity-0 group-hover/item:opacity-100 hover:text-red-700 font-bold">×</button>
                                                                                             </div>
-                                                                                            <div className="flex justify-between items-center group/item bg-white border border-black p-1 shadow-sm">
+                                                                                            <div className={`flex justify-between items-center group/item border p-1 shadow-sm ${styles.footer}`}>
                                                                                                 <span className="font-bold text-xs">진도: {scheduleItem.range}</span>
                                                                                                 <button className="text-xs text-red-500 opacity-0 group-hover/item:opacity-100 hover:text-red-700 font-bold">×</button>
                                                                                             </div>
