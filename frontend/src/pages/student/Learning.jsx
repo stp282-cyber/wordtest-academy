@@ -53,7 +53,11 @@ const Learning = () => {
         for (let i = 0; i < 5; i++) {
             const date = new Date(start);
             date.setDate(start.getDate() + i);
-            dates.push(date.toISOString().split('T')[0].replace(/-/g, '/'));
+            // Use local time formatting to match scheduleUtils
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const dayStr = String(date.getDate()).padStart(2, '0');
+            dates.push(`${year}/${month}/${dayStr}`);
         }
         return dates;
     };
@@ -123,11 +127,10 @@ const Learning = () => {
     const getScheduleStatus = (scheduleItem, curriculumId) => {
         if (!scheduleItem) return 'none';
 
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
-        const scheduleDate = new Date(scheduleItem.date);
-        scheduleDate.setHours(0, 0, 0, 0);
+        // Use local date string for comparison to avoid timezone issues
+        const now = new Date();
+        const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        const scheduleDateStr = scheduleItem.date;
 
         // Check completion
         const isCompleted = learningHistory.some(h =>
@@ -135,8 +138,8 @@ const Learning = () => {
         );
 
         if (isCompleted) return 'completed';
-        if (scheduleDate.getTime() === today.getTime()) return 'today';
-        if (scheduleDate.getTime() < today.getTime()) return 'past-incomplete';
+        if (scheduleDateStr === todayStr) return 'today';
+        if (scheduleDateStr < todayStr) return 'past-incomplete';
         return 'future';
     };
 
@@ -144,33 +147,41 @@ const Learning = () => {
         switch (status) {
             case 'completed':
                 return {
-                    card: 'bg-slate-100 border-slate-400 opacity-80',
-                    header: 'bg-slate-600 text-slate-200 border-slate-600',
-                    footer: 'bg-slate-200 text-slate-500 border-slate-400',
-                    text: 'text-slate-500',
-                    badge: 'bg-green-500 text-white border-green-700'
+                    // Darker, dimmed, "done" look
+                    card: 'bg-slate-300 border-slate-500 shadow-none opacity-70 grayscale',
+                    header: 'bg-slate-600 text-slate-300 border-slate-500',
+                    body: 'bg-slate-300',
+                    footer: 'bg-slate-400 text-slate-600 border-slate-500',
+                    text: 'text-slate-500 line-through decoration-2',
+                    badge: 'bg-slate-600 text-slate-300 border-slate-500'
                 };
             case 'today':
                 return {
-                    card: 'bg-white border-black ring-4 ring-yellow-300 ring-opacity-50',
+                    // Active, vibrant look
+                    card: 'bg-yellow-300 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transform -translate-y-1 ring-4 ring-black ring-offset-2 ring-offset-white',
                     header: 'bg-blue-600 text-white border-black',
-                    footer: 'bg-yellow-300 text-black border-black',
+                    body: 'bg-yellow-300',
+                    footer: 'bg-white text-black border-black',
                     text: 'text-black',
-                    badge: 'bg-blue-500 text-white border-black'
+                    badge: 'bg-blue-600 text-white border-black'
                 };
             case 'past-incomplete':
                 return {
-                    card: 'bg-red-50 border-red-500',
-                    header: 'bg-red-500 text-white border-red-700',
-                    footer: 'bg-red-200 text-red-900 border-red-400',
-                    text: 'text-red-900',
-                    badge: 'bg-red-500 text-white border-red-700'
+                    // Softer alert look
+                    card: 'bg-red-100 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]',
+                    header: 'bg-black text-red-300 border-black',
+                    body: 'bg-red-100',
+                    footer: 'bg-red-50 text-black border-black',
+                    text: 'text-black',
+                    badge: 'bg-black text-red-300 border-black'
                 };
             default: // future
                 return {
-                    card: 'bg-white border-black',
+                    // Standard look
+                    card: 'bg-white border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]',
                     header: 'bg-black text-white border-black',
-                    footer: 'bg-yellow-300 text-black border-black',
+                    body: 'bg-white',
+                    footer: 'bg-slate-100 text-black border-black',
                     text: 'text-black',
                     badge: 'bg-black text-white border-black'
                 };
@@ -261,7 +272,7 @@ const Learning = () => {
                                                                             </div>
 
                                                                             {/* Content */}
-                                                                            <div className={`flex-1 p-2 flex flex-col items-center justify-center text-center gap-1 min-h-0 pb-10 ${status === 'completed' ? 'bg-slate-50' : 'bg-white'}`}>
+                                                                            <div className={`flex-1 p-2 flex flex-col items-center justify-center text-center gap-1 min-h-0 pb-10 ${styles.body}`}>
                                                                                 {status === 'completed' && (
                                                                                     <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-0 opacity-10 pointer-events-none">
                                                                                         <Check className="w-20 h-20 text-black" />
@@ -312,11 +323,7 @@ const Learning = () => {
                                                                                 </Button>
                                                                             </div>
                                                                         </div>
-                                                                    ) : (
-                                                                        <div className="h-full w-full flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                                                                            <button className="text-2xl text-slate-300 hover:text-black font-black">+</button>
-                                                                        </div>
-                                                                    )}
+                                                                    ) : null}
                                                                 </td>
                                                             );
                                                         })}
@@ -361,7 +368,7 @@ const Learning = () => {
                                                     const styles = getStatusStyles(status);
 
                                                     return (
-                                                        <div key={curr.id} className={`p-4 ${status === 'completed' ? 'bg-slate-50 opacity-90' : 'bg-white'}`}>
+                                                        <div key={curr.id} className="p-4 bg-white">
                                                             <div className="flex justify-between items-start gap-4 mb-3">
                                                                 <div>
                                                                     <div className="text-xs font-bold text-slate-500 mb-1">{curr.title}</div>

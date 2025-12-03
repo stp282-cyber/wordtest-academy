@@ -3,6 +3,7 @@ import { Search, Filter, Calendar, CheckSquare, X, Save, ChevronLeft, ChevronRig
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
+import { getIncompleteLessons } from '../../utils/scheduleUtils';
 
 
 
@@ -102,8 +103,25 @@ const LearningRecordModal = ({ isOpen, onClose, student }) => {
 const DailyManagementModal = ({ isOpen, onClose, student }) => {
     if (!isOpen || !student) return null;
 
-    const [items, setItems] = useState(MOCK_INCOMPLETE);
+    const [items, setItems] = useState([]);
     const [selectedItems, setSelectedItems] = useState([]);
+
+    useEffect(() => {
+        if (isOpen && student) {
+            loadIncompleteLessons();
+        }
+    }, [isOpen, student]);
+
+    const loadIncompleteLessons = () => {
+        const curriculumKey = `curriculums_${student.id}`;
+        const historyKey = `learning_history_${student.id}`;
+
+        const curriculums = JSON.parse(localStorage.getItem(curriculumKey) || '[]');
+        const history = JSON.parse(localStorage.getItem(historyKey) || '[]');
+
+        const incomplete = getIncompleteLessons(student, curriculums, history);
+        setItems(incomplete);
+    };
 
     const toggleSelect = (id) => {
         setSelectedItems(prev =>
@@ -112,9 +130,36 @@ const DailyManagementModal = ({ isOpen, onClose, student }) => {
     };
 
     const handleDelete = () => {
-        setItems(prev => prev.filter(item => !selectedItems.includes(item.id)));
+        if (!confirm('선택한 항목을 삭제(면제) 처리하시겠습니까? 삭제 후에는 복구할 수 없습니다.')) return;
+
+        const historyKey = `learning_history_${student.id}`;
+        const history = JSON.parse(localStorage.getItem(historyKey) || '[]');
+
+        const newHistory = [...history];
+
+        selectedItems.forEach(itemId => {
+            const item = items.find(i => i.id === itemId);
+            if (item) {
+                // Add a "waived" record
+                newHistory.push({
+                    curriculumId: item.curriculumId,
+                    date: item.date,
+                    completedAt: new Date().toISOString(),
+                    status: 'waived',
+                    score: 0,
+                    waived: true
+                });
+            }
+        });
+
+        localStorage.setItem(historyKey, JSON.stringify(newHistory));
+
+        alert('선택한 항목이 삭제(면제) 처리되었습니다.');
         setSelectedItems([]);
-        alert('선택한 항목이 삭제되었습니다.');
+        loadIncompleteLessons();
+
+        // Trigger update event for other components
+        window.dispatchEvent(new Event('localStorageUpdated'));
     };
 
     return (
@@ -144,9 +189,9 @@ const DailyManagementModal = ({ isOpen, onClose, student }) => {
                             <thead>
                                 <tr className="bg-slate-100 text-sm font-black uppercase border-b-2 border-black">
                                     <th className="p-3 border-r-2 border-black">예상완료날짜</th>
-                                    <th className="p-3 border-r-2 border-black">미완료항목 영역</th>
+                                    <th className="p-3 border-r-2 border-black">커리큘럼</th>
                                     <th className="p-3 border-r-2 border-black">단원명</th>
-                                    <th className="p-3 border-r-2 border-black text-center">학습완료유무</th>
+                                    <th className="p-3 border-r-2 border-black text-center">상태</th>
                                     <th className="p-3 text-center">삭제</th>
                                 </tr>
                             </thead>
@@ -157,9 +202,11 @@ const DailyManagementModal = ({ isOpen, onClose, student }) => {
                                     items.map((item) => (
                                         <tr key={item.id} className="border-b border-black hover:bg-red-50">
                                             <td className="p-3 border-r border-black">{item.date}</td>
-                                            <td className="p-3 border-r border-black">{item.area}</td>
-                                            <td className="p-3 border-r border-black">{item.unit}</td>
-                                            <td className="p-3 border-r border-black text-center text-red-600">{item.status}</td>
+                                            <td className="p-3 border-r border-black">{item.curriculumTitle}</td>
+                                            <td className="p-3 border-r border-black">
+                                                {item.schedule.unitName || `${item.schedule.unit} ${item.schedule.subUnit}`}
+                                            </td>
+                                            <td className="p-3 border-r border-black text-center text-red-600">미완료</td>
                                             <td className="p-3 text-center">
                                                 <input
                                                     type="checkbox"
@@ -178,7 +225,7 @@ const DailyManagementModal = ({ isOpen, onClose, student }) => {
 
                 <div className="flex justify-end">
                     <Button onClick={handleDelete} className="bg-red-500 text-white hover:bg-red-600 shadow-neo border-black" disabled={selectedItems.length === 0}>
-                        <Save className="w-5 h-5 mr-2" /> 선택 항목 삭제 (저장)
+                        <Save className="w-5 h-5 mr-2" /> 선택 항목 삭제 (면제 처리)
                     </Button>
                 </div>
             </div>
@@ -423,8 +470,8 @@ const ProgressManagement = () => {
                                     <button
                                         onClick={toggleSelectAll}
                                         className={`w-8 h-8 border-2 border-white font-black text-xs transition-all ${filteredStudents.length > 0 && selectedStudentIds.length === filteredStudents.length
-                                                ? 'bg-green-300 text-black'
-                                                : 'bg-transparent text-white hover:bg-white/20'
+                                            ? 'bg-green-300 text-black'
+                                            : 'bg-transparent text-white hover:bg-white/20'
                                             }`}
                                     >
                                         {filteredStudents.length > 0 && selectedStudentIds.length === filteredStudents.length ? '✓' : ''}

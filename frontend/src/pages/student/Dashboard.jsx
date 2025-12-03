@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { BookOpen, Trophy, Target, Clock, ArrowUpRight, Bell } from 'lucide-react';
+import { BookOpen, Trophy, Target, Clock, ArrowUpRight, Bell, AlertTriangle } from 'lucide-react';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import client from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
-import { getTodaySchedule } from '../../utils/scheduleUtils';
+import { getTodaySchedule, getIncompleteLessons } from '../../utils/scheduleUtils';
 
 const StatCard = ({ icon: Icon, label, value, color }) => (
     <Card hover className={`flex items-center p-5 border-2 border-black shadow-neo ${color}`}>
@@ -26,6 +26,7 @@ const Dashboard = () => {
         accuracy: '0%',
         studyTime: '0h'
     });
+    const [incompleteLessons, setIncompleteLessons] = useState([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -48,6 +49,16 @@ const Dashboard = () => {
                     accuracy: `${avgScore}%`,
                     studyTime: `${totalTests * 0.5}h`
                 });
+
+                // Fetch Incomplete Lessons
+                const curriculumKey = `curriculums_${user.id}`;
+                const historyKey = `learning_history_${user.id}`;
+                const curriculums = JSON.parse(localStorage.getItem(curriculumKey) || '[]');
+                const history = JSON.parse(localStorage.getItem(historyKey) || '[]');
+
+                const incomplete = getIncompleteLessons(user, curriculums, history);
+                setIncompleteLessons(incomplete);
+
             } catch (error) {
                 console.error('Failed to fetch dashboard data:', error);
             } finally {
@@ -80,6 +91,38 @@ const Dashboard = () => {
                 <StatCard icon={Target} label="Accuracy" value={stats.accuracy} color="bg-green-200" />
                 <StatCard icon={Clock} label="Time" value={stats.studyTime} color="bg-purple-200" />
             </div>
+
+            {/* Incomplete Lessons Alert */}
+            {incompleteLessons.length > 0 && (
+                <div className="bg-red-50 border-4 border-red-500 p-6 shadow-neo-lg relative overflow-hidden">
+                    <div className="absolute top-0 right-0 bg-red-500 text-white px-4 py-1 border-l-4 border-b-4 border-black font-black uppercase text-sm z-10">
+                        Action Required
+                    </div>
+                    <h2 className="text-2xl font-black text-red-600 uppercase mb-4 flex items-center">
+                        <AlertTriangle className="w-8 h-8 mr-2" /> 미완료 학습 ({incompleteLessons.length})
+                    </h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {incompleteLessons.map((item, index) => (
+                            <div key={index} className="bg-white border-2 border-red-200 p-4 shadow-sm hover:shadow-md transition-shadow">
+                                <div className="flex justify-between items-start mb-2">
+                                    <span className="bg-red-100 text-red-800 px-2 py-0.5 text-xs font-bold uppercase rounded">{item.date}</span>
+                                    <span className="text-xs font-mono font-bold text-slate-500">{item.curriculumTitle}</span>
+                                </div>
+                                <h4 className="font-black text-lg text-black mb-1">
+                                    {item.schedule.unitName || `${item.schedule.unit} ${item.schedule.subUnit}`}
+                                </h4>
+                                <Button
+                                    size="sm"
+                                    className="w-full mt-2 bg-red-500 hover:bg-red-600 text-white border-black"
+                                    onClick={() => window.location.href = '/student/learning'}
+                                >
+                                    Catch Up Now
+                                </Button>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             {/* Notice Board */}
             <div className="bg-white border-4 border-black p-6 shadow-neo-lg relative overflow-hidden">

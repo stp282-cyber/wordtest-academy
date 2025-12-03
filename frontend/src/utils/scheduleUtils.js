@@ -338,6 +338,60 @@ export const generateScheduleForDate = (curriculum, targetDate) => {
         wordbookId: currentItem.wordbookId,
         dailyGoal: currentItem.settings.dailyGoal || 'manual',
         testType: currentItem.settings.testType || 'typing_english',
-        passScore: currentItem.settings.passScore || 70
+        passScore: currentItem.settings.passScore || 70,
+        // Use local time for date string to avoid timezone shifts (e.g. KST midnight -> UTC previous day)
+        date: `${targetDateObj.getFullYear()}-${String(targetDateObj.getMonth() + 1).padStart(2, '0')}-${String(targetDateObj.getDate()).padStart(2, '0')}`
     };
+};
+
+// Get incomplete lessons for a student
+export const getIncompleteLessons = (student, curriculums, learningHistory) => {
+    const incompleteLessons = [];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    curriculums.forEach(curriculum => {
+        const { startDate, days } = curriculum;
+        if (!startDate || !days) return;
+
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
+
+        // Iterate from start date to yesterday
+        const current = new Date(start);
+        while (current < today) {
+            // Check if this date is a learning day
+            const dayOfWeek = current.getDay();
+            const dayIds = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+            const dayId = dayIds[dayOfWeek];
+
+            if (days.includes(dayId)) {
+                // Check if completed
+                const dateStr = `${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, '0')}-${String(current.getDate()).padStart(2, '0')}`;
+
+                const isCompleted = learningHistory.some(h =>
+                    h.curriculumId === curriculum.id && h.date === dateStr
+                );
+
+                if (!isCompleted) {
+                    // Generate schedule details
+                    const schedule = generateScheduleForDate(curriculum, current);
+                    if (schedule) {
+                        incompleteLessons.push({
+                            id: `${curriculum.id}-${dateStr}`,
+                            studentId: student.id,
+                            studentName: student.name,
+                            curriculumId: curriculum.id,
+                            curriculumTitle: curriculum.title,
+                            date: dateStr,
+                            schedule: schedule
+                        });
+                    }
+                }
+            }
+            current.setDate(current.getDate() + 1);
+        }
+    });
+
+    return incompleteLessons;
 };
