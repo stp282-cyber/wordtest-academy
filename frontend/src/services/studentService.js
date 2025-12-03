@@ -4,8 +4,8 @@
  * 배포 시 API 연동을 위한 서비스 레이어
  */
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || null;
-const USE_API = !!API_BASE_URL;
+const API_BASE_URL = ''; // Use relative path for proxy
+const USE_API = true; // Default to true for production/dev with backend
 
 /**
  * 모든 학생 목록 조회
@@ -13,7 +13,7 @@ const USE_API = !!API_BASE_URL;
 export const getStudents = async () => {
     if (USE_API) {
         const token = localStorage.getItem('token');
-        const response = await fetch(`${API_BASE_URL}/api/students`, {
+        const response = await fetch(`${API_BASE_URL}/api/users/students`, {
             headers: {
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json'
@@ -37,7 +37,7 @@ export const getStudents = async () => {
 export const createStudent = async (studentData) => {
     if (USE_API) {
         const token = localStorage.getItem('token');
-        const response = await fetch(`${API_BASE_URL}/api/students`, {
+        const response = await fetch(`${API_BASE_URL}/api/users/students`, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${token}`,
@@ -73,7 +73,7 @@ export const createStudent = async (studentData) => {
 export const updateStudent = async (id, studentData) => {
     if (USE_API) {
         const token = localStorage.getItem('token');
-        const response = await fetch(`${API_BASE_URL}/api/students/${id}`, {
+        const response = await fetch(`${API_BASE_URL}/api/users/students/${id}`, {
             method: 'PUT',
             headers: {
                 'Authorization': `Bearer ${token}`,
@@ -106,7 +106,7 @@ export const updateStudent = async (id, studentData) => {
 export const deleteStudent = async (id) => {
     if (USE_API) {
         const token = localStorage.getItem('token');
-        const response = await fetch(`${API_BASE_URL}/api/students/${id}`, {
+        const response = await fetch(`${API_BASE_URL}/api/users/students/${id}`, {
             method: 'DELETE',
             headers: {
                 'Authorization': `Bearer ${token}`,

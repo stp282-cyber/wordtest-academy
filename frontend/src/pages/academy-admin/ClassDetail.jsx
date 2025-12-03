@@ -4,6 +4,7 @@ import { ArrowLeft, Users, BookOpen, Settings, Plus, X, Trash2 } from 'lucide-re
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
+import { getStudents } from '../../services/studentService';
 
 const ClassDetail = () => {
     const { id } = useParams();
@@ -26,9 +27,16 @@ const ClassDetail = () => {
         const currentClass = classes.find(c => c.id.toString() === id);
 
         // Load Students Data
-        const savedStudents = localStorage.getItem('students');
-        const allStudents = savedStudents ? JSON.parse(savedStudents) : [];
-        setAvailableStudents(allStudents);
+        const fetchStudents = async () => {
+            try {
+                const data = await getStudents();
+                setAvailableStudents(data);
+            } catch (error) {
+                console.error('Failed to load students:', error);
+                setAvailableStudents([]);
+            }
+        };
+        fetchStudents();
 
         // Load Wordbooks (Mock for now as we haven't implemented Wordbook persistence fully yet)
         setAvailableWordbooks([

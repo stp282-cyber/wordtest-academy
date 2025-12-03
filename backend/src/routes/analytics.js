@@ -3,8 +3,8 @@ const router = express.Router();
 const auth = require('../middleware/auth');
 const requireRole = require('../middleware/role');
 const { ROLES } = require('../config/constants');
-// const database = require('../config/database');
-const database = require('../config/mockDatabase');
+const database = require('../config/database');
+// const database = require('../config/mockDatabase');
 
 // Academy Analytics
 router.get('/academy', auth, requireRole([ROLES.ACADEMY_ADMIN]), async (req, res) => {

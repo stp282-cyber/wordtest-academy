@@ -21,26 +21,44 @@ const ClassLogModal = ({ isOpen, onClose, student }) => {
 
     const [learningHistory, setLearningHistory] = useState([]);
 
-    // Load curriculums and history from localStorage
+    // Load curriculums and history from API
     useEffect(() => {
         if (student && isOpen) {
-            const storageKey = `curriculums_${student.id}`;
-            const savedCurriculums = localStorage.getItem(storageKey);
-            if (savedCurriculums) {
-                setCurriculums(JSON.parse(savedCurriculums));
-            } else {
-                setCurriculums([]); // Reset if no data found
-            }
-
-            const historyKey = `learning_history_${student.id}`;
-            const savedHistory = localStorage.getItem(historyKey);
-            if (savedHistory) {
-                setLearningHistory(JSON.parse(savedHistory));
-            } else {
-                setLearningHistory([]);
-            }
+            loadCurriculums();
+            loadHistory();
         }
     }, [student, isOpen]);
+
+    const loadCurriculums = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch(`/api/curriculum/students/${student.id}`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            if (response.ok) {
+                const data = await response.json();
+                setCurriculums(data);
+            } else {
+                console.error('Failed to load curriculums');
+                setCurriculums([]);
+            }
+        } catch (error) {
+            console.error('Error loading curriculums:', error);
+            setCurriculums([]);
+        }
+    };
+
+    const loadHistory = () => {
+        const historyKey = `learning_history_${student.id}`;
+        const savedHistory = localStorage.getItem(historyKey);
+        if (savedHistory) {
+            setLearningHistory(JSON.parse(savedHistory));
+        } else {
+            setLearningHistory([]);
+        }
+    };
 
     // Save curriculums to localStorage
     const saveCurriculums = (newCurriculums) => {
@@ -50,7 +68,7 @@ const ClassLogModal = ({ isOpen, onClose, student }) => {
     };
 
     // 커리큘럼 등록 핸들러
-    const handleAddCurriculum = (curriculumData) => {
+    const handleAddCurriculum = async (curriculumData) => {
         // 중복 체크
         const isDuplicate = curriculums.some(c => c.curriculumId === curriculumData.curriculumId);
         if (isDuplicate) {
@@ -58,28 +76,67 @@ const ClassLogModal = ({ isOpen, onClose, student }) => {
             return;
         }
 
-        const newCurriculum = {
-            id: Date.now(),
-            ...curriculumData,
-            createdAt: new Date().toISOString()
-        };
+        try {
+            // Add schedule field - use the entire curriculumData as schedule
+            const dataToSend = {
+                curriculumId: curriculumData.curriculumId,
+                title: curriculumData.title,
+                days: curriculumData.days,
+                startDate: curriculumData.startDate,
+                schedule: curriculumData // Pass all data as schedule
+            };
 
-        const updatedCurriculums = [...curriculums, newCurriculum];
-        saveCurriculums(updatedCurriculums);
-        setAddCurriculumModalOpen(false);
-        alert('커리큘럼이 등록되었습니다.');
+            console.log('Sending curriculum data:', dataToSend);
+
+            const token = localStorage.getItem('token');
+            const response = await fetch(`/api/curriculum/students/${student.id}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(dataToSend)
+            });
+
+            if (response.ok) {
+                await loadCurriculums(); // Reload from server
+                setAddCurriculumModalOpen(false);
+                alert('커리큘럼이 등록되었습니다.');
+            } else {
+                const error = await response.json();
+                alert('커리큘럼 등록 실패: ' + (error.message || 'Unknown error'));
+            }
+        } catch (error) {
+            console.error('Error adding curriculum:', error);
+            alert('커리큘럼 등록 중 오류가 발생했습니다.');
+        }
     };
 
     // 커리큘럼 삭제 핸들러
-    const handleDeleteCurriculum = (curriculumId) => {
+    const handleDeleteCurriculum = async (curriculumId) => {
         if (window.confirm('이 커리큘럼을 삭제하시겠습니까?')) {
-            console.log('Deleting curriculum:', curriculumId);
-            console.log('Current curriculums:', curriculums);
-            const updatedCurriculums = curriculums.filter(c => c.id !== curriculumId);
-            console.log('Updated curriculums after delete:', updatedCurriculums);
-            console.log('Storage key:', `curriculums_${student.id}`);
-            saveCurriculums(updatedCurriculums);
-            alert('커리큘럼이 삭제되었습니다.');
+            try {
+                const curriculum = curriculums.find(c => c.id === curriculumId);
+                if (!curriculum) return;
+
+                const token = localStorage.getItem('token');
+                const response = await fetch(`/api/curriculum/students/${student.id}/${curriculum.curriculumId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    await loadCurriculums(); // Reload from server
+                    alert('커리큘럼이 삭제되었습니다.');
+                } else {
+                    alert('커리큘럼 삭제에 실패했습니다.');
+                }
+            } catch (error) {
+                console.error('Error deleting curriculum:', error);
+                alert('커리큘럼 삭제 중 오류가 발생했습니다.');
+            }
         }
     };
 

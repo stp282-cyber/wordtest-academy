@@ -4,6 +4,7 @@ import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
 import { getIncompleteLessons } from '../../utils/scheduleUtils';
+import { getStudents } from '../../services/studentService';
 
 
 
@@ -270,17 +271,21 @@ const ProgressManagement = () => {
         };
     }, []);
 
-    const loadStudents = () => {
-        const savedStudents = localStorage.getItem('students');
-        if (savedStudents) {
-            try {
-                const parsed = JSON.parse(savedStudents);
-                setStudents(parsed);
-            } catch (e) {
-                console.error('Failed to parse students:', e);
-                setStudents([]);
-            }
-        } else {
+    const loadStudents = async () => {
+        try {
+            const data = await getStudents();
+            const formatted = data.map(s => ({
+                ...s,
+                name: s.name || s.full_name || s.username, // Ensure name is always set
+                studentId: s.username || s.studentId || s.id,
+                className: s.className || '미배정',
+                curriculumStatus: s.curriculumStatus || '미등록',
+                curriculumName: s.curriculumName || '-',
+                weeklyProgress: s.weeklyProgress || s.progress || 0
+            }));
+            setStudents(formatted);
+        } catch (error) {
+            console.error('Failed to load students:', error);
             setStudents([]);
         }
     };
@@ -348,8 +353,9 @@ const ProgressManagement = () => {
     // Filter Logic
     const filteredStudents = students.filter(student => {
         const matchesClass = filterClass === 'All' || student.className === filterClass;
-        const matchesSearch = student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (student.studentId && student.studentId.toLowerCase().includes(searchTerm.toLowerCase()));
+        const matchesSearch = (student.name && student.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+            (student.studentId && student.studentId.toLowerCase().includes(searchTerm.toLowerCase())) ||
+            (student.full_name && student.full_name.toLowerCase().includes(searchTerm.toLowerCase()));
         return matchesClass && matchesSearch;
     });
 

@@ -5,11 +5,11 @@ const db = require('./src/config/database');
     await db.initialize();
     const conn = await db.getPool().getConnection();
     const result = await conn.execute(
-        'SELECT column_name FROM user_tab_columns WHERE table_name = :tableName',
-        { tableName: 'USERS' }
+        'SELECT username, email, role, status FROM users WHERE username = :username',
+        { username: 'test1' }
     );
-    console.log('USERS table columns:');
-    result.rows.forEach(row => console.log(row.COLUMN_NAME));
+    console.log('test1 user info:');
+    console.log(result.rows);
     await conn.close();
     process.exit(0);
 })();

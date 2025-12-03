@@ -3,8 +3,8 @@ const cors = require('cors');
 const http = require('http');
 const path = require('path');
 const { Server } = require('socket.io');
-// const database = require('./config/database'); // Real DB
-const database = require('./config/mockDatabase'); // Mock DB for testing
+const database = require('./config/database'); // Real DB
+// const database = require('./config/mockDatabase'); // Mock DB for testing
 require('dotenv').config();
 
 const app = express();

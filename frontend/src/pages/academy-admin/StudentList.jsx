@@ -3,6 +3,7 @@ import { Plus, Search, MoreVertical, Edit, Trash2, User, Filter, X } from 'lucid
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
+import { getStudents, createStudent, updateStudent, deleteStudent } from '../../services/studentService';
 
 const StudentList = () => {
     const [students, setStudents] = useState([]);
@@ -54,25 +55,26 @@ const StudentList = () => {
         };
     }, []);
 
-    const loadStudents = () => {
-        const savedStudents = localStorage.getItem('students');
-        if (savedStudents) {
-            const parsed = JSON.parse(savedStudents);
-            // Migrate old data structure if needed
-            const migrated = parsed.map(s => ({
+    const loadStudents = async () => {
+        try {
+            setLoading(true);
+            const data = await getStudents();
+            // Map API data to frontend structure
+            const formatted = data.map(s => ({
                 ...s,
-                studentId: s.studentId || s.id || `std${s.id}`,
-                className: s.className || s.class || '미배정',
+                name: s.name || s.full_name || s.username, // Ensure name is always set
+                studentId: s.username || s.studentId || s.id, // Map username to studentId
+                status: s.status === 'active' ? 'Active' : s.status === 'inactive' ? 'Inactive' : s.status, // Normalize status
+                className: s.className || '미배정',
                 curriculumStatus: s.curriculumStatus || '미등록',
                 curriculumName: s.curriculumName || '-',
                 weeklyProgress: s.weeklyProgress || s.progress || 0
             }));
-            setStudents(migrated);
-            // Save migrated data
-            localStorage.setItem('students', JSON.stringify(migrated));
-            setLoading(false);
-        } else {
+            setStudents(formatted);
+        } catch (error) {
+            console.error('Failed to load students:', error);
             setStudents([]);
+        } finally {
             setLoading(false);
         }
     };
@@ -97,8 +99,9 @@ const StudentList = () => {
     const classes = ['All', ...new Set(students.map(s => s.className).filter(Boolean))];
 
     const filteredStudents = students.filter(student => {
-        const matchesSearch = student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (student.email && student.email.toLowerCase().includes(searchTerm.toLowerCase()));
+        const matchesSearch = (student.name && student.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+            (student.email && student.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
+            (student.full_name && student.full_name.toLowerCase().includes(searchTerm.toLowerCase()));
         const matchesClass = selectedClass === 'All' || student.className === selectedClass;
         return matchesSearch && matchesClass;
     });
@@ -111,7 +114,7 @@ const StudentList = () => {
         }));
     };
 
-    const handleAddStudent = (e) => {
+    const handleAddStudent = async (e) => {
         e.preventDefault();
 
         // Basic validation
@@ -120,52 +123,43 @@ const StudentList = () => {
             return;
         }
 
-        let updatedStudents;
-
-        if (isEditing) {
-            updatedStudents = students.map(student =>
-                student.id === editingId ? {
-                    ...student,
-                    studentId: formData.id,
-                    name: formData.name,
-                    email: formData.email,
-                    password: formData.password,
-                    className: formData.className,
-                    status: formData.status
-                } : student
-            );
-            alert('학생 정보가 수정되었습니다.');
-        } else {
-            const newStudent = {
-                id: Date.now(),
+        try {
+            const studentData = {
+                username: formData.id, // Map id to username for API
                 studentId: formData.id,
                 name: formData.name,
                 email: formData.email,
                 password: formData.password,
                 className: formData.className,
                 status: formData.status,
-                progress: 0,
-                curriculumStatus: '미등록',
-                curriculumName: '-',
-                weeklyProgress: 0
+                role: 'STUDENT'
             };
-            updatedStudents = [...students, newStudent];
-            alert('학생이 추가되었습니다.');
+
+            if (isEditing) {
+                await updateStudent(editingId, studentData);
+                alert('학생 정보가 수정되었습니다.');
+            } else {
+                await createStudent(studentData);
+                alert('학생이 추가되었습니다.');
+            }
+
+            loadStudents();
+            closeModal();
+        } catch (error) {
+            console.error('Failed to save student:', error);
+            alert('학생 저장에 실패했습니다: ' + (error.message || 'Unknown error'));
         }
-
-        setStudents(updatedStudents);
-        localStorage.setItem('students', JSON.stringify(updatedStudents));
-        window.dispatchEvent(new Event('localStorageUpdated'));
-
-        closeModal();
     };
 
-    const handleDeleteStudent = (id) => {
+    const handleDeleteStudent = async (id) => {
         if (window.confirm('정말 이 학생을 삭제하시겠습니까?')) {
-            const updatedStudents = students.filter(student => student.id !== id);
-            setStudents(updatedStudents);
-            localStorage.setItem('students', JSON.stringify(updatedStudents));
-            window.dispatchEvent(new Event('localStorageUpdated'));
+            try {
+                await deleteStudent(id);
+                loadStudents();
+            } catch (error) {
+                console.error('Failed to delete student:', error);
+                alert('학생 삭제에 실패했습니다.');
+            }
         }
     };
 

@@ -3,7 +3,8 @@ const router = express.Router();
 const auth = require('../middleware/auth');
 const Word = require('../models/Word');
 // const database = require('../config/database');
-const database = require('../config/mockDatabase');
+const database = require('../config/database');
+// const database = require('../config/mockDatabase');
 
 // Get Words for Today's Learning
 router.get('/words', auth, async (req, res) => {

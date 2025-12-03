@@ -16,18 +16,11 @@ router.post('/login', async (req, res) => {
             return res.status(401).json({ message: 'Invalid credentials' });
         }
 
-        // Verify password
-        // In development with Mock DB, accept 'password123' or 'rudwlschl83'
-        const isDev = process.env.NODE_ENV !== 'production';
-        const isMatch = isDev ?
-            (password === 'password123' || password === 'rudwlschl83') :
-            await bcrypt.compare(password, user.password_hash || user.password);
+        // Verify password using bcrypt
+        const isMatch = await bcrypt.compare(password, user.password_hash || user.password);
 
         if (!isMatch) {
-            // Fallback for plain text
-            if (password !== user.password && password !== user.password_hash) {
-                return res.status(401).json({ message: 'Invalid credentials' });
-            }
+            return res.status(401).json({ message: 'Invalid credentials' });
         }
 
         // Generate Token

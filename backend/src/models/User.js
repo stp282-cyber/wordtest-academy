@@ -1,5 +1,5 @@
-// const database = require('../config/database');
-const database = require('../config/mockDatabase');
+const database = require('../config/database');
+// const database = require('../config/mockDatabase');
 const { v4: uuidv4 } = require('uuid');
 const bcrypt = require('bcrypt');
 
@@ -12,7 +12,7 @@ class User {
 
         try {
             const sql = `
-        INSERT INTO users (id, academy_id, username, password, name, role, phone, email, status)
+        INSERT INTO users (id, academy_id, username, password, name, role, parent_phone, email, status)
         VALUES (:id, :academy_id, :username, :password, :name, :role, :phone, :email, 'active')
       `;
 
@@ -21,10 +21,10 @@ class User {
                 academy_id: userData.academy_id || null,
                 username: userData.username,
                 password: passwordHash,
-                name: userData.full_name,
+                name: userData.full_name || userData.username, // Use username as fallback
                 role: userData.role,
                 phone: userData.phone || null,
-                email: userData.email || null
+                email: userData.email || `${userData.username}@student.local` // Generate default email if not provided
             });
 
             await connection.commit();
@@ -150,7 +150,7 @@ class User {
         const pool = database.getPool();
         const connection = await pool.getConnection();
         try {
-            let sql = `SELECT id, academy_id, username, name, role, phone, email, created_at, last_login FROM users WHERE academy_id = :academyId`;
+            let sql = `SELECT id, academy_id, username, name, role, parent_phone, email, created_at, last_login FROM users WHERE academy_id = :academyId`;
             const binds = { academyId };
 
             if (role) {

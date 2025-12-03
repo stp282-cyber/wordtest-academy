@@ -102,54 +102,107 @@ module.exports = {
     generateTest,
     generateAudio,
     assignTest: async (req, res) => {
+        let connection;
         try {
-            const assignment = {
-                id: Date.now(),
-                ...req.body,
-                assignedAt: new Date().toISOString(),
-                status: 'assigned'
-            };
+            const { studentId, level, count, topic, questions, audioUrl } = req.body;
+            const database = require('../config/database');
+            connection = await database.getPool().getConnection();
 
-            const dataDir = path.join(__dirname, '../../data');
-            if (!fs.existsSync(dataDir)) {
-                fs.mkdirSync(dataDir, { recursive: true });
-            }
-            const filePath = path.join(dataDir, 'assignments.json');
+            // 1. Save the Test
+            const resultTest = await connection.execute(
+                `INSERT INTO listening_tests (level_num, topic, question_count, questions_json, audio_url)
+                 VALUES (:level_num, :topic, :question_count, :questions_json, :audio_url)
+                 RETURNING id INTO :id`,
+                {
+                    level_num: level,
+                    topic: topic,
+                    question_count: count,
+                    questions_json: JSON.stringify(questions),
+                    audio_url: audioUrl,
+                    id: { type: require('oracledb').NUMBER, dir: require('oracledb').BIND_OUT }
+                }
+            );
 
-            let assignments = [];
-            if (fs.existsSync(filePath)) {
-                const fileContent = fs.readFileSync(filePath, 'utf8');
-                if (fileContent) assignments = JSON.parse(fileContent);
-            }
+            const testId = resultTest.outBinds.id[0];
 
-            assignments.push(assignment);
-            fs.writeFileSync(filePath, JSON.stringify(assignments, null, 2));
+            // 2. Assign to Student
+            await connection.execute(
+                `INSERT INTO test_assignments (test_id, student_id, status)
+                 VALUES (:test_id, :student_id, 'assigned')`,
+                {
+                    test_id: testId,
+                    student_id: studentId
+                }
+            );
 
-            res.json({ message: 'Assignment saved', assignment });
+            await connection.commit();
+
+            res.json({ message: 'Assignment saved', testId });
         } catch (error) {
             console.error("Assignment Error:", error);
             res.status(500).json({ message: "Failed to save assignment" });
+        } finally {
+            if (connection) {
+                try {
+                    await connection.close();
+                } catch (err) {
+                    console.error(err);
+                }
+            }
         }
     },
     getAssignments: async (req, res) => {
+        let connection;
         try {
             const { studentId } = req.params;
-            const dataDir = path.join(__dirname, '../../data');
-            const filePath = path.join(dataDir, 'assignments.json');
+            const database = require('../config/database');
+            connection = await database.getPool().getConnection();
 
-            let assignments = [];
-            if (fs.existsSync(filePath)) {
-                const fileContent = fs.readFileSync(filePath, 'utf8');
-                if (fileContent) assignments = JSON.parse(fileContent);
-            }
+            const result = await connection.execute(
+                `SELECT a.id as assignment_id, a.status, a.assigned_at, a.score,
+                        t.id as test_id, t.level_num, t.topic, t.question_count, t.questions_json, t.audio_url
+                 FROM test_assignments a
+                 JOIN listening_tests t ON a.test_id = t.id
+                 WHERE a.student_id = :student_id
+                 ORDER BY a.assigned_at DESC`,
+                [studentId]
+            );
 
-            // Filter by studentId
-            const studentAssignments = assignments.filter(a => String(a.studentId) === String(studentId));
+            // Map result to frontend format
+            const assignments = result.rows.map(row => {
+                // row is an array if outFormat is ARRAY (default), or object if OBJECT
+                // database.js sets outFormat = OBJECT usually, let's check.
+                // Assuming database.js sets oracledb.outFormat = oracledb.OUT_FORMAT_OBJECT
 
-            res.json(studentAssignments);
+                // If using mockDatabase, it might be different, but we are switching to real DB.
+                // Let's assume OBJECT format for safety or handle both? 
+                // Standard practice in this project seems to be OBJECT.
+
+                return {
+                    id: row.ASSIGNMENT_ID, // Oracle returns uppercase keys by default
+                    status: row.STATUS,
+                    assignedAt: row.ASSIGNED_AT,
+                    score: row.SCORE,
+                    testId: row.TEST_ID,
+                    level: row.LEVEL_NUM,
+                    topic: row.TOPIC,
+                    questions: JSON.parse(row.QUESTIONS_JSON), // Parse JSON string back to object
+                    audioUrl: row.AUDIO_URL
+                };
+            });
+
+            res.json(assignments);
         } catch (error) {
             console.error("Get Assignments Error:", error);
             res.status(500).json({ message: "Failed to get assignments" });
+        } finally {
+            if (connection) {
+                try {
+                    await connection.close();
+                } catch (err) {
+                    console.error(err);
+                }
+            }
         }
     }
 };

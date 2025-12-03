@@ -12,22 +12,42 @@ const Learning = () => {
 
     const [learningHistory, setLearningHistory] = useState([]);
 
-    // Load curriculums and history from localStorage
+    // Load curriculums and history from API
     useEffect(() => {
         if (user) {
-            const storageKey = `curriculums_${user.id}`;
-            const savedCurriculums = localStorage.getItem(storageKey);
-            if (savedCurriculums) {
-                setCurriculums(JSON.parse(savedCurriculums));
-            }
-
-            const historyKey = `learning_history_${user.id}`;
-            const savedHistory = localStorage.getItem(historyKey);
-            if (savedHistory) {
-                setLearningHistory(JSON.parse(savedHistory));
-            }
+            loadCurriculums();
+            loadHistory();
         }
     }, [user]);
+
+    const loadCurriculums = async () => {
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch(`/api/curriculum/students/${user.id}`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            if (response.ok) {
+                const data = await response.json();
+                setCurriculums(data);
+            } else {
+                console.error('Failed to load curriculums');
+                setCurriculums([]);
+            }
+        } catch (error) {
+            console.error('Error loading curriculums:', error);
+            setCurriculums([]);
+        }
+    };
+
+    const loadHistory = () => {
+        const historyKey = `learning_history_${user.id}`;
+        const savedHistory = localStorage.getItem(historyKey);
+        if (savedHistory) {
+            setLearningHistory(JSON.parse(savedHistory));
+        }
+    };
 
     const weekDays = ['월', '화', '수', '목', '금'];
     const dayMap = {
