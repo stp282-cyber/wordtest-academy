@@ -5,6 +5,7 @@ import LearningSettingsModal from './LearningSettingsModal';
 import LearningDaysModal from './LearningDaysModal';
 import ProgressAdjustmentModal from './ProgressAdjustmentModal';
 import AddCurriculumModal from './AddCurriculumModal';
+import { generateScheduleForDate } from '../../utils/scheduleUtils';
 
 const ClassLogModal = ({ isOpen, onClose, student }) => {
     if (!isOpen || !student) return null;
@@ -82,9 +83,15 @@ const ClassLogModal = ({ isOpen, onClose, student }) => {
         'fri': '금'
     };
 
-    // Helper to get dates for a specific week offset
-    const getWeekDates = (startDate, weekOffset) => {
-        const start = new Date(startDate);
+    // Helper to get dates for a specific week offset (Always starting from Monday)
+    const getWeekDates = (baseDate, weekOffset) => {
+        const start = new Date(baseDate);
+        // Find Monday of the current week
+        const day = start.getDay();
+        const diff = start.getDate() - day + (day === 0 ? -6 : 1); // Adjust when day is Sunday
+        start.setDate(diff);
+
+        // Apply week offset
         start.setDate(start.getDate() + (weekOffset * 7));
 
         const dates = [];
@@ -135,197 +142,43 @@ const ClassLogModal = ({ isOpen, onClose, student }) => {
         return units;
     };
 
-    // 스케줄 생성 함수
+    // 스케줄 생성 함수 (Updated to use shared logic and correct date calculation)
     const generateSchedule = (curriculum, weekOffset = 0) => {
         const schedule = {};
         const { days, startDate } = curriculum;
 
         if (!days || !startDate) return schedule;
 
-        // Load curriculum details from localStorage to get items with settings
-        const savedCurriculums = JSON.parse(localStorage.getItem('curriculums') || '[]');
-        const curriculumDetail = savedCurriculums.find(c => c.id === curriculum.curriculumId);
+        // Calculate Monday of the target week
+        const targetMonday = new Date(currentDate);
+        const day = targetMonday.getDay();
+        const diff = targetMonday.getDate() - day + (day === 0 ? -6 : 1);
+        targetMonday.setDate(diff);
+        targetMonday.setDate(targetMonday.getDate() + (weekOffset * 7));
 
-        if (!curriculumDetail || !curriculumDetail.items || curriculumDetail.items.length === 0) {
-            // Fallback to old behavior if no curriculum detail found
-            return generateFallbackSchedule(curriculum, weekOffset);
-        }
+        // Generate schedule for each day of the week (Mon-Fri)
+        weekDays.forEach((dayLabel, index) => {
+            // Find the date for this day
+            const targetDate = new Date(targetMonday);
+            targetDate.setDate(targetMonday.getDate() + index);
+            const dateDisplay = targetDate.toISOString().split('T')[0];
 
-        // Calculate which day this week offset represents
-        const startDateObj = new Date(startDate);
-        const daysFromStart = weekOffset * 7;
+            // Use shared utility to generate schedule
+            const daySchedule = generateScheduleForDate(curriculum, targetDate);
 
-        // Track progress through curriculum items
-        let totalDaysElapsed = 0;
-        let currentItemIndex = 0;
-        let currentWordIndexInItem = 0;
-
-        // Generate schedule for each day of the week
-        days.forEach((dayId, dayIndexInWeek) => {
-            const dayLabel = dayMap[dayId];
-            if (!dayLabel) return;
-
-            // Calculate absolute day number from start
-            const absoluteDayNumber = daysFromStart + dayIndexInWeek;
-
-            // Count how many learning days have passed
-            // Each week has days.length learning days, so:
-            // - Week 0: learning days 0 to (days.length - 1)
-            // - Week 1: learning days days.length to (2 * days.length - 1)
-            // - etc.
-            let learningDaysElapsed = weekOffset * days.length + dayIndexInWeek;
-
-            // Find which curriculum item we're on
-            let daysIntoCurrentItem = learningDaysElapsed;
-            let itemIndex = 0;
-            let wordsForToday = [];
-            let currentItem = null;
-
-            for (let i = 0; i < curriculumDetail.items.length; i++) {
-                const item = curriculumDetail.items[i];
-                const wordbookId = item.wordbookId;
-                const wordbookWords = JSON.parse(localStorage.getItem(`wordbook_words_${wordbookId}`) || '[]');
-                const settings = item.settings;
-
-                let daysNeededForItem = 0;
-                let units = [];
-
-                // Check if using unit-based pacing
-                if (['0.5_unit', '1_unit', '2_units'].includes(settings.dailyGoal)) {
-                    units = getUnits(wordbookWords);
-                    const unitsPerDay = settings.dailyGoal === '0.5_unit' ? 0.5 : (settings.dailyGoal === '2_units' ? 2 : 1);
-                    daysNeededForItem = Math.ceil(units.length / unitsPerDay);
-                } else {
-                    // Manual or fallback
-                    const dailyCount = settings.wordCount || 10;
-                    daysNeededForItem = Math.ceil(wordbookWords.length / dailyCount);
-                }
-
-                if (daysIntoCurrentItem < daysNeededForItem) {
-                    itemIndex = i;
-                    currentItem = item;
-
-                    // Calculate words for today
-                    if (units.length > 0) {
-                        const unitsPerDay = settings.dailyGoal === '0.5_unit' ? 0.5 : (settings.dailyGoal === '2_units' ? 2 : 1);
-
-                        if (settings.dailyGoal === '0.5_unit') {
-                            // 0.5 unit per day logic
-                            const unitIndex = Math.floor(daysIntoCurrentItem / 2);
-                            if (unitIndex < units.length) {
-                                const unit = units[unitIndex];
-                                const isSecondHalf = daysIntoCurrentItem % 2 === 1;
-                                const halfCount = Math.ceil(unit.count / 2);
-
-                                if (!isSecondHalf) {
-                                    wordsForToday = unit.words.slice(0, halfCount);
-                                } else {
-                                    wordsForToday = unit.words.slice(halfCount);
-                                }
-                            }
-                        } else {
-                            // 1 or 2 units per day
-                            const startUnitIndex = daysIntoCurrentItem * unitsPerDay;
-                            const endUnitIndex = Math.min(startUnitIndex + unitsPerDay, units.length);
-
-                            for (let u = startUnitIndex; u < endUnitIndex; u++) {
-                                if (units[u]) {
-                                    wordsForToday = [...wordsForToday, ...units[u].words];
-                                }
-                            }
-                        }
-                    } else {
-                        // Manual count logic
-                        const dailyCount = settings.wordCount || 10;
-                        const startWordIndex = daysIntoCurrentItem * dailyCount;
-                        const endWordIndex = Math.min(startWordIndex + dailyCount, wordbookWords.length);
-                        wordsForToday = wordbookWords.slice(startWordIndex, endWordIndex);
-                    }
-                    break;
-                } else {
-                    daysIntoCurrentItem -= daysNeededForItem;
-                }
+            if (daySchedule) {
+                schedule[dayLabel] = {
+                    type: 'learning',
+                    textbook: daySchedule.textbook,
+                    major: daySchedule.major,
+                    minor: daySchedule.minor,
+                    unitName: daySchedule.unitName,
+                    wordRange: daySchedule.wordRange,
+                    wordCount: daySchedule.wordCount,
+                    date: dateDisplay,
+                    dailyGoal: daySchedule.dailyGoal
+                };
             }
-
-            if (!currentItem || wordsForToday.length === 0) {
-                return;
-            }
-
-            // Extract unit information
-            const uniqueMajors = [...new Set(wordsForToday.map(w => w.major).filter(Boolean))];
-            const uniqueMinors = [...new Set(wordsForToday.map(w => w.minor).filter(Boolean))];
-            const uniqueUnitNames = [...new Set(wordsForToday.map(w => w.unitName).filter(Boolean))];
-
-            const majorDisplay = uniqueMajors.length > 0 ? uniqueMajors.join(', ') : '대단원 미지정';
-            const minorDisplay = uniqueMinors.length > 0 ? uniqueMinors.join(', ') : '소단원 미지정';
-            const unitNameDisplay = uniqueUnitNames.length > 0 ? uniqueUnitNames.join(', ') : '단원명 미지정';
-
-            // Calculate date
-            const currentDayDate = new Date(startDateObj);
-            currentDayDate.setDate(currentDayDate.getDate() + learningDaysElapsed);
-            const dateDisplay = currentDayDate.toISOString().split('T')[0];
-
-            // Calculate word numbers relative to the current sub-unit
-            let numberRange;
-
-            if (wordsForToday.length > 0) {
-                const firstWord = wordsForToday[0];
-                const lastWord = wordsForToday[wordsForToday.length - 1];
-                const wordbookId = currentItem.wordbookId;
-                const wordbookWords = JSON.parse(localStorage.getItem(`wordbook_words_${wordbookId}`) || '[]');
-
-                // If we have minor units, calculate position within the specific major+minor combination
-                if (uniqueMinors.length > 0 && uniqueMajors.length > 0) {
-                    const currentMajor = uniqueMajors[0];
-                    const currentMinor = uniqueMinors[0];
-
-                    // Find all words in the same major+minor unit from the entire wordbook
-                    const wordsInSameUnit = wordbookWords.filter(w => w.major == currentMajor && w.minor == currentMinor);
-
-                    // Find the position of today's first and last word within that unit
-                    const firstWordInUnit = wordsInSameUnit.findIndex(w => w.number === firstWord.number);
-                    const lastWordInUnit = wordsInSameUnit.findIndex(w => w.number === lastWord.number);
-
-                    if (firstWordInUnit !== -1 && lastWordInUnit !== -1) {
-                        // Position within the unit (1-indexed)
-                        const startPos = firstWordInUnit + 1;
-                        const endPos = lastWordInUnit + 1;
-                        numberRange = `${startPos}~${endPos}`;
-                    } else {
-                        // Fallback: use position in entire wordbook
-                        const firstIndex = wordbookWords.findIndex(w => w.number === firstWord.number);
-                        const lastIndex = wordbookWords.findIndex(w => w.number === lastWord.number);
-                        if (firstIndex !== -1 && lastIndex !== -1) {
-                            numberRange = `${firstIndex + 1}~${lastIndex + 1}`;
-                        } else {
-                            numberRange = `1~${wordsForToday.length}`;
-                        }
-                    }
-                } else {
-                    // No minor units - use position in entire wordbook
-                    const firstIndex = wordbookWords.findIndex(w => w.number === firstWord.number);
-                    const lastIndex = wordbookWords.findIndex(w => w.number === lastWord.number);
-                    if (firstIndex !== -1 && lastIndex !== -1) {
-                        numberRange = `${firstIndex + 1}~${lastIndex + 1}`;
-                    } else {
-                        numberRange = `1~${wordsForToday.length}`;
-                    }
-                }
-            } else {
-                numberRange = '0~0';
-            }
-
-            schedule[dayLabel] = {
-                type: 'learning',
-                textbook: currentItem.title || '단어장',
-                major: majorDisplay,
-                minor: minorDisplay,
-                unitName: unitNameDisplay,
-                wordRange: numberRange,
-                wordCount: wordsForToday.length,
-                date: dateDisplay,
-                dailyGoal: currentItem.settings.dailyGoal || 'manual'
-            };
         });
 
         return schedule;

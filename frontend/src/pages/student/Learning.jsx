@@ -30,9 +30,15 @@ const Learning = () => {
         'fri': '금'
     };
 
-    // Helper to get dates for a specific week offset
-    const getWeekDates = (startDate, weekOffset) => {
-        const start = new Date(startDate);
+    // Helper to get dates for a specific week offset (Always starting from Monday)
+    const getWeekDates = (baseDate, weekOffset) => {
+        const start = new Date(baseDate);
+        // Find Monday of the current week
+        const day = start.getDay();
+        const diff = start.getDate() - day + (day === 0 ? -6 : 1); // Adjust when day is Sunday
+        start.setDate(diff);
+
+        // Apply week offset
         start.setDate(start.getDate() + (weekOffset * 7));
 
         const dates = [];
@@ -51,28 +57,31 @@ const Learning = () => {
 
         if (!days || !startDate) return schedule;
 
-        const savedCurriculums = JSON.parse(localStorage.getItem('curriculums') || '[]');
-        const curriculumDetail = savedCurriculums.find(c => c.id === curriculum.curriculumId);
+        // Calculate Monday of the target week
+        const targetMonday = new Date(currentDate);
+        const day = targetMonday.getDay();
+        const diff = targetMonday.getDate() - day + (day === 0 ? -6 : 1);
+        targetMonday.setDate(diff);
+        targetMonday.setDate(targetMonday.getDate() + (weekOffset * 7));
 
-        if (!curriculumDetail || !curriculumDetail.items || curriculumDetail.items.length === 0) {
-            return schedule;
-        }
-
-        const startDateObj = new Date(startDate);
-        const daysFromStart = weekOffset * 7;
-
-        days.forEach((dayId, dayIndexInWeek) => {
+        days.forEach((dayId) => {
             const dayLabel = dayMap[dayId];
             if (!dayLabel) return;
 
-            const learningDaysElapsed = weekOffset * days.length + dayIndexInWeek;
+            // Find the date for this day (Mon-Fri)
+            // We need to find the index of this dayId in our weekDays array?
+            // No, weekDays is ['월', '화'...]
+            // We need to find the index of dayId ('mon', 'tue'...) in standard week
+            const standardDays = ['mon', 'tue', 'wed', 'thu', 'fri'];
+            const dayIndex = standardDays.indexOf(dayId);
 
-            // Calculate date for this day
-            const currentDayDate = new Date(startDateObj);
-            currentDayDate.setDate(currentDayDate.getDate() + learningDaysElapsed);
+            if (dayIndex === -1) return;
+
+            const targetDate = new Date(targetMonday);
+            targetDate.setDate(targetMonday.getDate() + dayIndex);
 
             // Use the utility function to generate schedule for this date
-            const daySchedule = generateScheduleForDate(curriculum, currentDayDate);
+            const daySchedule = generateScheduleForDate(curriculum, targetDate);
 
             if (daySchedule) {
                 schedule[dayLabel] = daySchedule;

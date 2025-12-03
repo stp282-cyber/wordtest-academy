@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Volume2, ArrowLeft, ShieldAlert, X, Check, RotateCcw, BookOpen, Award } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Button from '../../components/common/Button';
-import { getPreviousTwoDaysWords } from '../../utils/scheduleUtils';
+import { getPreviousReviewWords } from '../../utils/scheduleUtils';
 
 const WordTest = () => {
     const navigate = useNavigate();
@@ -52,7 +52,9 @@ const WordTest = () => {
 
                 // Let's just implement the logic here directly to avoid hoisting issues
                 const choices = [{ text: currentWord.korean, isCorrect: true }];
-                const otherWords = [...words].filter(w => w.number !== currentWord.number);
+                // Use a larger pool for distractors (combine review and main words)
+                const pool = [...reviewWords, ...mainWords];
+                const otherWords = pool.filter(w => w.number !== currentWord.number);
 
                 for (let i = otherWords.length - 1; i > 0; i--) {
                     const j = Math.floor(Math.random() * (i + 1));
@@ -76,7 +78,7 @@ const WordTest = () => {
                 setCurrentChoices(choices);
             }
         }
-    }, [testPhase, currentTestIndex, reviewWords, reviewWrongWords]);
+    }, [testPhase, currentTestIndex, reviewWords, reviewWrongWords, mainWords]);
 
     useEffect(() => {
         // Load lesson data from localStorage
@@ -91,8 +93,8 @@ const WordTest = () => {
             const shuffled = [...parsed.words].sort(() => Math.random() - 0.5);
             setMainWords(shuffled);
 
-            // Load previous 2 days words for review
-            const prevWords = getPreviousTwoDaysWords(parsed.curriculum, new Date());
+            // Load previous words for review based on reviewCycles
+            const prevWords = getPreviousReviewWords(parsed.curriculum, new Date(), parsed.curriculum.reviewCycles || 3);
             if (prevWords.length > 0) {
                 const shuffledReview = [...prevWords].sort(() => Math.random() - 0.5);
                 setReviewWords(shuffledReview);
@@ -228,10 +230,11 @@ const WordTest = () => {
                     setTestPhase('complete');
                 }
             } else {
-                // Still have wrong answers, retry again
+                // Still have wrong answers, go to study again
                 setWrongWords(finalWrong);
                 setReviewWrongWords([]);
                 setWrongRetryCount(prev => prev + 1);
+                setTestPhase('wrong_review');
                 setCurrentTestIndex(0);
                 setTypedAnswer('');
             }
@@ -306,7 +309,7 @@ const WordTest = () => {
             const finalWrong = isCorrect ? reviewWrongWords : [...reviewWrongWords, word];
             if (finalWrong.length > 0) {
                 setReviewWrongWords(finalWrong);
-                setTestPhase('review_retry');
+                setTestPhase('review_wrong_study');
                 setCurrentTestIndex(0);
             } else {
                 setTestPhase('complete');
@@ -316,26 +319,27 @@ const WordTest = () => {
 
     // Handle review retry answer
     const handleReviewRetryAnswer = (isCorrect, word) => {
-        const tempWrong = [...reviewWrongWords];
-        if (!isCorrect) {
-            // Keep in wrong list
-        } else {
-            // Remove from wrong list
-            const index = tempWrong.findIndex(w => w.number === word.number);
-            if (index !== -1) {
-                tempWrong.splice(index, 1);
-            }
+        // Use wrongWords as temporary buffer for failed review words
+        if (!isCorrect && !wrongWords.find(w => w.number === word.number)) {
+            setWrongWords(prev => [...prev, word]);
         }
 
         if (currentTestIndex < reviewWrongWords.length - 1) {
             setCurrentTestIndex(prev => prev + 1);
         } else {
-            if (tempWrong.length === 0) {
+            // Check if all correct
+            const finalWrong = isCorrect ? wrongWords : [...wrongWords, word];
+
+            if (finalWrong.length === 0) {
                 setReviewRetryCount(prev => prev + 1);
                 setTestPhase('complete');
+                setWrongWords([]); // Clear buffer
             } else {
-                setReviewWrongWords(tempWrong);
+                // Still have wrong answers, go to study again
+                setReviewWrongWords(finalWrong);
+                setWrongWords([]); // Clear buffer
                 setReviewRetryCount(prev => prev + 1);
+                setTestPhase('review_wrong_study');
                 setCurrentTestIndex(0);
             }
         }
@@ -370,6 +374,9 @@ const WordTest = () => {
 
             case 'review':
                 return renderMultipleChoiceTest(reviewWords, '복습 시험 (5지선다)');
+
+            case 'review_wrong_study':
+                return renderReviewWrongStudy();
 
             case 'review_retry':
                 return renderMultipleChoiceTest(reviewWrongWords, '복습 오답 재시험');
@@ -504,18 +511,15 @@ const WordTest = () => {
 
                     {/* Footer */}
                     <div className="text-center py-8 space-y-4">
-                        <p className="text-slate-500 font-mono text-sm">
-                            💡 카드를 클릭하면 발음을 들을 수 있습니다
-                        </p>
                         <Button
                             onClick={() => {
                                 setTestPhase('main');
                                 setCurrentTestIndex(0);
                                 setTypedAnswer('');
                             }}
-                            className="bg-blue-600 text-white border-black hover:bg-blue-700 px-12 py-4 text-xl font-black shadow-neo-lg hover:shadow-neo-xl transition-all"
+                            className="bg-blue-600 text-white border-black hover:bg-blue-700 px-12 py-4 text-xl font-black shadow-neo-lg hover:shadow-neo-xl transition-all animate-pulse hover:animate-none"
                         >
-                            암기 완료! 시험 보기
+                            시험 시작하기
                         </Button>
                     </div>
                 </div>
@@ -661,8 +665,8 @@ const WordTest = () => {
 
                                 {/* TTS Icon */}
                                 <div className={`absolute top-3 right-3 p-3 rounded-full border-3 border-black transition-all duration-300 z-20 ${playingWord === word.english
-                                        ? 'bg-gradient-to-br from-red-500 to-orange-600 opacity-100 scale-110 rotate-12'
-                                        : 'bg-gradient-to-br from-slate-100 to-slate-200 opacity-0 group-hover:opacity-100 group-hover:scale-100'
+                                    ? 'bg-gradient-to-br from-red-500 to-orange-600 opacity-100 scale-110 rotate-12'
+                                    : 'bg-gradient-to-br from-slate-100 to-slate-200 opacity-0 group-hover:opacity-100 group-hover:scale-100'
                                     }`}>
                                     <Volume2 className={`w-6 h-6 transition-all duration-300 ${playingWord === word.english ? 'text-white animate-bounce' : 'text-black group-hover:text-red-600'}`} />
                                 </div>
@@ -671,22 +675,22 @@ const WordTest = () => {
                                     {/* English Word */}
                                     <div className="relative">
                                         <h3 className={`${getFontSize(word.english)} font-black break-words leading-tight transition-all duration-300 ${playingWord === word.english
-                                                ? 'text-red-600 scale-105'
-                                                : 'text-black group-hover:text-red-600 group-hover:scale-105'
+                                            ? 'text-red-600 scale-105'
+                                            : 'text-black group-hover:text-red-600 group-hover:scale-105'
                                             }`}>
                                             {word.english}
                                         </h3>
                                         {/* Decorative underline */}
                                         <div className={`h-2 w-20 mx-auto mt-3 transform -rotate-2 transition-all duration-300 ${playingWord === word.english
-                                                ? 'bg-gradient-to-r from-red-400 via-orange-400 to-yellow-400 scale-125 rotate-3'
-                                                : 'bg-red-300 group-hover:scale-125 group-hover:bg-gradient-to-r group-hover:from-red-400 group-hover:to-orange-400'
+                                            ? 'bg-gradient-to-r from-red-400 via-orange-400 to-yellow-400 scale-125 rotate-3'
+                                            : 'bg-red-300 group-hover:scale-125 group-hover:bg-gradient-to-r group-hover:from-red-400 group-hover:to-orange-400'
                                             }`} />
                                     </div>
 
                                     {/* Korean Meaning */}
                                     <p className={`text-2xl font-bold transition-all duration-300 ${playingWord === word.english
-                                            ? 'text-orange-600 scale-105'
-                                            : 'text-slate-600 group-hover:text-black group-hover:scale-105'
+                                        ? 'text-orange-600 scale-105'
+                                        : 'text-slate-600 group-hover:text-black group-hover:scale-105'
                                         }`}>
                                         {word.korean}
                                     </p>
@@ -694,8 +698,8 @@ const WordTest = () => {
 
                                 {/* Bottom Strip - Animated */}
                                 <div className={`h-3 w-full transition-all duration-500 ${playingWord === word.english
-                                        ? 'bg-gradient-to-r from-red-400 via-orange-400 to-yellow-400 animate-pulse'
-                                        : 'bg-gradient-to-r from-red-400 via-orange-400 to-yellow-400 transform scale-x-0 group-hover:scale-x-100 origin-left'
+                                    ? 'bg-gradient-to-r from-red-400 via-orange-400 to-yellow-400 animate-pulse'
+                                    : 'bg-gradient-to-r from-red-400 via-orange-400 to-yellow-400 transform scale-x-0 group-hover:scale-x-100 origin-left'
                                     }`} />
                             </div>
                         ))}
@@ -703,9 +707,6 @@ const WordTest = () => {
 
                     {/* Footer */}
                     <div className="text-center py-8 space-y-4">
-                        <p className="text-slate-500 font-mono text-sm">
-                            💡 카드를 클릭하면 발음을 들을 수 있습니다
-                        </p>
                         <Button
                             onClick={() => {
                                 setTestPhase('wrong_retry');
@@ -713,9 +714,138 @@ const WordTest = () => {
                                 setTypedAnswer('');
                                 setReviewWrongWords([]);
                             }}
-                            className="bg-red-600 text-white border-black hover:bg-red-700 px-12 py-4 text-xl font-black shadow-neo-lg hover:shadow-neo-xl transition-all"
+                            className="bg-red-600 text-white border-black hover:bg-red-700 px-12 py-4 text-xl font-black shadow-neo-lg hover:shadow-neo-xl transition-all animate-pulse hover:animate-none"
                         >
-                            암기 완료! 재시험 보기
+                            재시험 시작하기
+                        </Button>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    // Render review wrong study mode
+    const renderReviewWrongStudy = () => {
+        if (reviewWrongWords.length === 0) return null;
+
+        const getFontSize = (text) => {
+            if (text.length > 15) return 'text-2xl';
+            if (text.length > 10) return 'text-3xl';
+            return 'text-4xl';
+        };
+
+        return (
+            <div className="min-h-screen bg-slate-100 p-4 md:p-8 select-none">
+                <div className="max-w-7xl mx-auto space-y-8">
+                    {/* Header */}
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 animate-in slide-in-from-top-4 duration-700">
+                        <div>
+                            <Button
+                                onClick={() => navigate('/student/learning')}
+                                variant="ghost"
+                                className="mb-2 pl-0 hover:bg-transparent hover:text-slate-600 transition-colors"
+                            >
+                                <ArrowLeft className="w-5 h-5 mr-2" /> Back to Schedule
+                            </Button>
+                            <h1 className="text-5xl font-black text-black uppercase italic tracking-tight mb-4 drop-shadow-sm">
+                                Review Wrong Study
+                            </h1>
+                            <div className="flex flex-wrap items-center gap-3">
+                                <span className="bg-red-500 text-white px-4 py-1.5 font-bold text-sm transform -rotate-2 shadow-[4px_4px_0px_0px_rgba(100,100,100,0.5)]">
+                                    복습 오답 학습
+                                </span>
+                                <span className="bg-yellow-300 border-2 border-black px-4 py-1.5 font-bold text-sm shadow-neo-sm transform rotate-1">
+                                    총 {reviewWrongWords.length}단어
+                                </span>
+                            </div>
+                        </div>
+
+                        <div className="flex gap-4 self-end md:self-auto">
+                            <Button
+                                onClick={() => {
+                                    setTestPhase('review_retry');
+                                    setCurrentTestIndex(0);
+                                }}
+                                className="bg-red-600 text-white border-black hover:bg-red-700 hover:scale-105 hover:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] transform transition-all shadow-neo-lg px-8 py-4 text-xl font-black"
+                            >
+                                복습 재시험 시작하기
+                            </Button>
+                        </div>
+                    </div>
+
+                    {/* Wrong Words Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        {reviewWrongWords.map((word, index) => (
+                            <div
+                                key={index}
+                                onClick={() => playTTS(word.english)}
+                                className={`
+                                    relative group cursor-pointer
+                                    bg-white border-4 border-red-500 shadow-[8px_8px_0px_0px_rgba(239,68,68,1)]
+                                    hover:shadow-[16px_16px_0px_0px_rgba(239,68,68,1)] hover:-translate-y-2 hover:-translate-x-2
+                                    transition-all duration-300 overflow-hidden
+                                    animate-in fade-in slide-in-from-bottom-4
+                                    ${playingWord === word.english ? 'bg-gradient-to-br from-red-50 to-orange-50 ring-4 ring-red-400 scale-105 shadow-[20px_20px_0px_0px_rgba(239,68,68,1)]' : ''}
+                                `}
+                                style={{ animationDelay: `${index * 50}ms` }}
+                            >
+                                {/* Number Badge */}
+                                <div className="absolute top-0 left-0 bg-red-600 text-white px-3 py-1 font-black text-sm border-b-2 border-r-2 border-black z-10">
+                                    #{index + 1}
+                                </div>
+
+                                {/* TTS Icon */}
+                                <div className={`absolute top-3 right-3 p-3 rounded-full border-3 border-black transition-all duration-300 z-20 ${playingWord === word.english
+                                    ? 'bg-gradient-to-br from-red-500 to-orange-600 opacity-100 scale-110 rotate-12'
+                                    : 'bg-gradient-to-br from-slate-100 to-slate-200 opacity-0 group-hover:opacity-100 group-hover:scale-100'
+                                    }`}>
+                                    <Volume2 className={`w-6 h-6 transition-all duration-300 ${playingWord === word.english ? 'text-white animate-bounce' : 'text-black group-hover:text-red-600'}`} />
+                                </div>
+
+                                <div className="p-8 pt-16 text-center space-y-4">
+                                    {/* English Word */}
+                                    <div className="relative">
+                                        <h3 className={`${getFontSize(word.english)} font-black break-words leading-tight transition-all duration-300 ${playingWord === word.english
+                                            ? 'text-red-600 scale-105'
+                                            : 'text-black group-hover:text-red-600 group-hover:scale-105'
+                                            }`}>
+                                            {word.english}
+                                        </h3>
+                                        {/* Decorative underline */}
+                                        <div className={`h-2 w-20 mx-auto mt-3 transform -rotate-2 transition-all duration-300 ${playingWord === word.english
+                                            ? 'bg-gradient-to-r from-red-400 via-orange-400 to-yellow-400 scale-125 rotate-3'
+                                            : 'bg-red-300 group-hover:scale-125 group-hover:bg-gradient-to-r group-hover:from-red-400 group-hover:to-orange-400'
+                                            }`} />
+                                    </div>
+
+                                    {/* Korean Meaning */}
+                                    <p className={`text-2xl font-bold transition-all duration-300 ${playingWord === word.english
+                                        ? 'text-orange-600 scale-105'
+                                        : 'text-slate-600 group-hover:text-black group-hover:scale-105'
+                                        }`}>
+                                        {word.korean}
+                                    </p>
+                                </div>
+
+                                {/* Bottom Strip - Animated */}
+                                <div className={`h-3 w-full transition-all duration-500 ${playingWord === word.english
+                                    ? 'bg-gradient-to-r from-red-400 via-orange-400 to-yellow-400 animate-pulse'
+                                    : 'bg-gradient-to-r from-red-400 via-orange-400 to-yellow-400 transform scale-x-0 group-hover:scale-x-100 origin-left'
+                                    }`} />
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Footer */}
+                    <div className="text-center py-8 space-y-4">
+                        <Button
+                            onClick={() => {
+                                setTestPhase('review_retry');
+                                setCurrentTestIndex(0);
+                            }}
+                            className="bg-red-600 text-white border-black hover:bg-red-700 px-12 py-4 text-xl font-black shadow-neo-lg hover:shadow-neo-xl transition-all animate-pulse hover:animate-none"
+                        >
+                            재시험 시작하기
                         </Button>
                     </div>
                 </div>

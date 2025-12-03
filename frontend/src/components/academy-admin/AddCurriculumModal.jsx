@@ -10,6 +10,7 @@ const AddCurriculumModal = ({ isOpen, onClose, onRegister, student }) => {
     const [selectedDays, setSelectedDays] = useState([]);
     const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
     const [startNumber, setStartNumber] = useState(1);
+    const [reviewCycles, setReviewCycles] = useState(3);
     const [showDropdown, setShowDropdown] = useState(false);
     const [availableCurriculums, setAvailableCurriculums] = useState([]);
 
@@ -74,6 +75,7 @@ const AddCurriculumModal = ({ isOpen, onClose, onRegister, student }) => {
             days: selectedDays,
             startDate: startDate,
             startNumber: parseInt(startNumber) || 1,
+            reviewCycles: parseInt(reviewCycles) || 3,
             wordbooks: selectedCurriculum.wordbooks
         };
 
@@ -87,6 +89,7 @@ const AddCurriculumModal = ({ isOpen, onClose, onRegister, student }) => {
         setSelectedDays([]);
         setStartDate('');
         setStartNumber(1);
+        setReviewCycles(3);
         setShowDropdown(false);
     };
 
@@ -101,7 +104,8 @@ const AddCurriculumModal = ({ isOpen, onClose, onRegister, student }) => {
             title: selectedCurriculum.title,
             days: selectedDays,
             startDate: startDate,
-            startNumber: startNumber
+            startNumber: startNumber,
+            reviewCycles: reviewCycles
         };
 
         localStorage.setItem('copiedCurriculum', JSON.stringify(copyData));
@@ -123,6 +127,7 @@ const AddCurriculumModal = ({ isOpen, onClose, onRegister, student }) => {
             setSelectedDays(data.days);
             setStartDate(data.startDate);
             setStartNumber(data.startNumber || 1);
+            setReviewCycles(data.reviewCycles || 3);
             alert('커리큘럼 정보가 붙여넣기 되었습니다.');
         } else {
             alert('해당 커리큘럼을 찾을 수 없습니다.');
@@ -274,6 +279,22 @@ const AddCurriculumModal = ({ isOpen, onClose, onRegister, student }) => {
                         <p className="text-xs text-slate-500 font-bold">커리큘럼 첫 번째 단어장의 시작 번호를 입력하세요.</p>
                     </div>
 
+                    {/* 복습 시험 횟수 선택 */}
+                    <div className="space-y-2">
+                        <label className="font-black text-sm uppercase bg-black text-white px-3 py-1 inline-block">
+                            5. 복습 시험 횟수 (통과 후)
+                        </label>
+                        <select
+                            value={reviewCycles}
+                            onChange={(e) => setReviewCycles(parseInt(e.target.value))}
+                            className="w-full p-3 border-2 border-black font-bold focus:outline-none focus:shadow-neo"
+                        >
+                            {[1, 2, 3, 4, 5].map(num => (
+                                <option key={num} value={num}>{num}회</option>
+                            ))}
+                        </select>
+                        <p className="text-xs text-slate-500 font-bold">시험 통과 후 해당 범위를 몇 번 더 복습할지 설정합니다. (기본 3회)</p>
+                    </div>
 
                 </div>
 
@@ -290,7 +311,7 @@ const AddCurriculumModal = ({ isOpen, onClose, onRegister, student }) => {
                         className="bg-black text-white hover:bg-slate-800 border-white px-8"
                     >
                         <Save className="w-5 h-5 mr-2" />
-                        등록
+                        등록하기
                     </Button>
                 </div>
             </div>

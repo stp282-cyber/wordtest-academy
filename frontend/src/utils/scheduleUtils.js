@@ -74,7 +74,8 @@ export const getTodaySchedule = (studentId) => {
 };
 
 // Get previous 2 days' words for review test
-export const getPreviousTwoDaysWords = (curriculum, currentDate) => {
+// Get previous days' words for review test based on reviewCycles
+export const getPreviousReviewWords = (curriculum, currentDate, reviewCycles = 3) => {
     const { days, startDate, curriculumId } = curriculum;
     if (!days || !startDate) return [];
 
@@ -98,13 +99,14 @@ export const getPreviousTwoDaysWords = (curriculum, currentDate) => {
     const weekOffset = Math.floor(daysDiff / 7);
     const currentLearningDay = weekOffset * days.length + currentDayIndex;
 
-    // We need at least 2 previous learning days
-    if (currentLearningDay < 2) return [];
 
-    // Get words from previous 2 learning days
+    // We need at least 1 previous learning day
+    if (currentLearningDay < 1) return [];
+
+    // Get words from previous learning days based on reviewCycles
     const allPreviousWords = [];
 
-    for (let i = 1; i <= 2; i++) {
+    for (let i = 1; i <= reviewCycles; i++) {
         const targetLearningDay = currentLearningDay - i;
         if (targetLearningDay < 0) continue;
 
@@ -119,9 +121,39 @@ export const getPreviousTwoDaysWords = (curriculum, currentDate) => {
 
         // Adjust to the correct day of week
         const targetDayOfWeek = dayIds.indexOf(targetDayId);
-        const currentDayOfWeek = targetDate.getDay();
-        const dayDiff = targetDayOfWeek - currentDayOfWeek;
-        targetDate.setDate(targetDate.getDate() + dayDiff);
+        // We need to find the date that matches targetDayId in that week
+        // The targetDate is currently the start of the week (Sunday usually, or start date?)
+        // Wait, logic above: targetDate.setDate(targetDate.getDate() + (targetWeek * 7));
+        // This adds weeks to startDate.
+        // We need to find the specific day in that week.
+
+        // Let's rely on generateScheduleForDate to find the correct words for a learning day index?
+        // Actually generateScheduleForDate takes a Date.
+        // We need to reverse engineer the Date from learningDayIndex.
+
+        // Simplified approach: Iterate back day by day until we find a learning day?
+        // Or use the math:
+        // StartDate + (targetWeek * 7) + (day difference to targetDayId)
+
+        const startDayOfWeek = startDateObj.getDay(); // e.g. 1 (Mon)
+        const targetDayOfWeekIndex = dayIds.indexOf(targetDayId); // e.g. 3 (Wed)
+
+        // This logic is tricky because startDate might not be the first day of the week.
+        // But let's assume standard weeks for now or just use the loop logic I had before which seemed to work for 2 days.
+
+        // Previous logic:
+        // const currentDayOfWeek = targetDate.getDay();
+        // const dayDiff = targetDayOfWeek - currentDayOfWeek;
+        // targetDate.setDate(targetDate.getDate() + dayDiff);
+
+        // Let's stick to the previous logic but just loop 'reviewCycles' times.
+
+        // Re-implementing the date calculation from previous logic:
+        // targetDate is startDate + weeks.
+        const currentDayOfWeekInTargetWeek = targetDate.getDay();
+        const targetDayOfWeekVal = dayIds.indexOf(targetDayId);
+        const diff = targetDayOfWeekVal - currentDayOfWeekInTargetWeek;
+        targetDate.setDate(targetDate.getDate() + diff);
 
         // Get schedule for that date
         const schedule = generateScheduleForDate(curriculum, targetDate);
