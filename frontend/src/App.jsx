@@ -35,11 +35,11 @@ import { Home, Book, Trophy, Settings as SettingsIcon, Users, BookOpen, Graduati
 import { AuthProvider } from './context/AuthContext';
 
 const studentMenuItems = [
-    { icon: Home, label: 'Dashboard', to: '/student' },
-    { icon: Book, label: 'My Learning', to: '/student/learning' },
-    { icon: Trophy, label: 'Games', to: '/student/games' },
+    { icon: Home, label: '대시보드', to: '/student' },
+    { icon: Book, label: '나의 학습', to: '/student/learning' },
+    { icon: Trophy, label: '게임', to: '/student/games' },
     { icon: MessageSquare, label: '쪽지함', to: '/student/messages' },
-    { icon: SettingsIcon, label: 'Settings', to: '/student/settings' },
+    { icon: SettingsIcon, label: '설정', to: '/student/settings' },
 ];
 
 const academyMenuItems = [

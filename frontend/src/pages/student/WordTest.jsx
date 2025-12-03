@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Volume2, ArrowLeft, ShieldAlert, X, Check, RotateCcw, BookOpen, Award } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Button from '../../components/common/Button';
+import Card from '../../components/common/Card';
 import { getPreviousReviewWords } from '../../utils/scheduleUtils';
 
 const WordTest = () => {
@@ -36,6 +37,10 @@ const WordTest = () => {
 
     // Stable choices for multiple choice test
     const [currentChoices, setCurrentChoices] = useState([]);
+
+    // Scramble Mode State
+    const [scrambledChunks, setScrambledChunks] = useState([]);
+    const [selectedChunks, setSelectedChunks] = useState([]);
 
     // Generate choices when entering review phase or changing index
     useEffect(() => {
@@ -79,6 +84,41 @@ const WordTest = () => {
             }
         }
     }, [testPhase, currentTestIndex, reviewWords, reviewWrongWords, mainWords]);
+
+    // Scramble Logic: Generate chunks when word changes
+    useEffect(() => {
+        if (testMode === 'scramble' && (testPhase === 'main' || testPhase === 'main_retry' || testPhase === 'wrong_retry' || testPhase === 'review' || testPhase === 'review_retry')) {
+            const currentWords = testPhase === 'main' || testPhase === 'main_retry' ? mainWords :
+                testPhase === 'wrong_retry' ? wrongWords :
+                    testPhase === 'review' || testPhase === 'review_retry' ? reviewWords : [];
+
+            if (currentWords.length > 0 && currentTestIndex < currentWords.length) {
+                const word = currentWords[currentTestIndex];
+                const english = word.english;
+
+                // Split by spaces to keep words intact, or characters if single word?
+                // User request: "scrambled words" -> implies sentence or phrase.
+                // If it's a single word, maybe split by characters?
+                // Let's assume splitting by words (spaces) first. If no spaces, split by chars.
+
+                let chunks = [];
+                if (english.includes(' ')) {
+                    chunks = english.split(' ');
+                } else {
+                    chunks = english.split('');
+                }
+
+                // Shuffle chunks
+                for (let i = chunks.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [chunks[i], chunks[j]] = [chunks[j], chunks[i]];
+                }
+
+                setScrambledChunks(chunks.map((text, idx) => ({ id: idx, text, selected: false })));
+                setSelectedChunks([]);
+            }
+        }
+    }, [testMode, testPhase, currentTestIndex, mainWords, wrongWords, reviewWords]);
 
     useEffect(() => {
         // Load lesson data from localStorage
@@ -177,6 +217,52 @@ const WordTest = () => {
     // Check typing answer
     const checkTypingAnswer = (userAnswer, correctAnswer) => {
         return normalizeAnswer(userAnswer) === normalizeAnswer(correctAnswer);
+    };
+
+
+
+    // Handle Scramble Handlers
+    const handleChunkSelect = (chunk) => {
+        if (chunk.selected) return;
+
+        // Add to selected
+        setSelectedChunks(prev => [...prev, chunk]);
+
+        // Mark as selected in scrambled
+        setScrambledChunks(prev => prev.map(c => c.id === chunk.id ? { ...c, selected: true } : c));
+    };
+
+    const handleChunkDeselect = (chunk) => {
+        // Remove from selected
+        setSelectedChunks(prev => prev.filter(c => c.id !== chunk.id));
+
+        // Unmark in scrambled
+        setScrambledChunks(prev => prev.map(c => c.id === chunk.id ? { ...c, selected: false } : c));
+    };
+
+    const handleScrambleSubmit = () => {
+        const currentWords = testPhase === 'main' || testPhase === 'main_retry' ? mainWords :
+            testPhase === 'wrong_retry' ? wrongWords :
+                testPhase === 'review' || testPhase === 'review_retry' ? reviewWords : [];
+
+        const currentWord = currentWords[currentTestIndex];
+
+        // Construct answer from selected chunks
+        // If original was split by space, join by space. If by char, join by empty string.
+        const separator = currentWord.english.includes(' ') ? ' ' : '';
+        const userAnswer = selectedChunks.map(c => c.text).join(separator);
+
+        const isCorrect = checkTypingAnswer(userAnswer, currentWord.english);
+
+        if (testPhase === 'main' || testPhase === 'main_retry') {
+            handleMainTestAnswer(isCorrect, currentWord);
+        } else if (testPhase === 'wrong_retry') {
+            handleWrongRetryAnswer(isCorrect, currentWord);
+        } else if (testPhase === 'review') {
+            handleReviewAnswer(isCorrect, currentWord);
+        } else if (testPhase === 'review_retry') {
+            handleReviewRetryAnswer(isCorrect, currentWord);
+        }
     };
 
     // Handle typing submit
@@ -394,21 +480,33 @@ const WordTest = () => {
 
             case 'main':
             case 'main_retry':
+                if (testMode === 'scramble') {
+                    return renderScrambleTest(mainWords, '1차 순서 섞기 시험', testPhase === 'main_retry');
+                }
                 return renderTypingTest(mainWords, '1차 타이핑 시험', testPhase === 'main_retry');
 
             case 'wrong_review':
                 return renderWrongReview();
 
             case 'wrong_retry':
+                if (testMode === 'scramble') {
+                    return renderScrambleTest(wrongWords, '오답 순서 섞기 재시험', false);
+                }
                 return renderTypingTest(wrongWords, '오답 재시험', false);
 
             case 'review':
+                if (testMode === 'scramble') {
+                    return renderScrambleTest(reviewWords, '복습 순서 섞기 시험');
+                }
                 return renderMultipleChoiceTest(reviewWords, '복습 시험 (5지선다)');
 
             case 'review_wrong_study':
                 return renderReviewWrongStudy();
 
             case 'review_retry':
+                if (testMode === 'scramble') {
+                    return renderScrambleTest(reviewWrongWords, '복습 오답 순서 섞기 재시험', true);
+                }
                 return renderMultipleChoiceTest(reviewWrongWords, '복습 오답 재시험');
 
             case 'complete':
@@ -417,6 +515,90 @@ const WordTest = () => {
             default:
                 return null;
         }
+    };
+
+    // Render Scramble Test Mode
+    const renderScrambleTest = (words, title, isRetry = false) => {
+        if (words.length === 0) return null;
+        const currentWord = words[currentTestIndex];
+        const progress = Math.round(((currentTestIndex) / words.length) * 100);
+
+        return (
+            <div className="min-h-screen bg-slate-100 p-4 md:p-8 flex flex-col items-center justify-start pt-12">
+                <div className="w-full max-w-4xl space-y-8">
+                    {/* Header */}
+                    <div className="flex justify-between items-center">
+                        <h2 className="text-3xl font-black uppercase italic">{title}</h2>
+                        <div className="flex items-center gap-4">
+                            <div className="bg-white px-4 py-2 border-2 border-black shadow-neo-sm font-bold">
+                                {currentTestIndex + 1} / {words.length}
+                            </div>
+                            <div className="w-32 h-4 bg-white border-2 border-black p-0.5">
+                                <div className="h-full bg-green-400 transition-all duration-300" style={{ width: `${progress}%` }} />
+                            </div>
+                        </div>
+                    </div>
+
+                    <Card className="border-4 border-black shadow-neo-lg bg-white p-8 md:p-12 min-h-[400px] flex flex-col items-center justify-center space-y-12">
+                        {/* Korean Meaning */}
+                        <div className="text-center space-y-4">
+                            <span className="inline-block bg-yellow-300 px-4 py-1 border-2 border-black font-black text-sm uppercase transform -rotate-2">
+                                Meaning
+                            </span>
+                            <h3 className="text-4xl md:text-5xl font-black text-slate-800 break-keep leading-tight">
+                                {currentWord.korean}
+                            </h3>
+                        </div>
+
+                        {/* Answer Area (Selected Chunks) */}
+                        <div className="w-full min-h-[80px] border-b-4 border-black border-dashed p-4 flex flex-wrap justify-center gap-3 items-center bg-slate-50">
+                            {selectedChunks.length === 0 && (
+                                <span className="text-slate-400 font-bold">단어 조각을 선택하여 문장을 완성하세요</span>
+                            )}
+                            {selectedChunks.map((chunk) => (
+                                <button
+                                    key={`selected-${chunk.id}`}
+                                    onClick={() => handleChunkDeselect(chunk)}
+                                    className="bg-black text-white border-2 border-black px-4 py-2 text-xl font-bold shadow-neo-sm hover:bg-red-500 hover:border-red-500 transition-colors animate-in zoom-in duration-200"
+                                >
+                                    {chunk.text}
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Choice Area (Scrambled Chunks) */}
+                        <div className="flex flex-wrap justify-center gap-4">
+                            {scrambledChunks.map((chunk) => (
+                                <button
+                                    key={`scrambled-${chunk.id}`}
+                                    onClick={() => handleChunkSelect(chunk)}
+                                    disabled={chunk.selected}
+                                    className={`
+                                    px-6 py-3 text-xl font-bold border-4 border-black shadow-neo transition-all
+                                    ${chunk.selected
+                                            ? 'opacity-0 scale-0 pointer-events-none'
+                                            : 'bg-white hover:bg-yellow-100 hover:-translate-y-1 hover:shadow-neo-lg active:translate-y-0 active:shadow-neo'}
+                                `}
+                                >
+                                    {chunk.text}
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Submit Button */}
+                        <div className="pt-8">
+                            <Button
+                                onClick={handleScrambleSubmit}
+                                disabled={selectedChunks.length === 0}
+                                className="bg-green-400 text-black hover:bg-green-500 border-black shadow-neo hover:shadow-neo-lg px-12 py-4 text-xl font-black disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                제출하기 (Submit)
+                            </Button>
+                        </div>
+                    </Card>
+                </div>
+            </div>
+        );
     };
 
     // Render study mode (flashcards)

@@ -34,28 +34,32 @@ const Dashboard = () => {
             try {
                 if (!user) return;
 
-                // Fetch Analytics
-                const analyticsRes = await client.get(`/analytics/student/${user.id}`);
-                const results = analyticsRes.data;
-
-                // Calculate Stats - handle both lowercase and uppercase column names
-                const totalTests = results.length;
-                const totalScore = results.reduce((acc, curr) => acc + (curr.SCORE || curr.score || 0), 0);
-                const avgScore = totalTests > 0 ? Math.round(totalScore / totalTests) : 0;
-
-                setStats({
-                    wordsLearned: totalTests * 20, // Mock calculation
-                    totalPoints: totalScore * 10,
-                    accuracy: `${avgScore}%`,
-                    studyTime: `${totalTests * 0.5}h`
-                });
-
-                // Fetch Incomplete Lessons
-                const curriculumKey = `curriculums_${user.id}`;
+                // 1. Calculate Stats from LocalStorage
                 const historyKey = `learning_history_${user.id}`;
-                const curriculums = JSON.parse(localStorage.getItem(curriculumKey) || '[]');
                 const history = JSON.parse(localStorage.getItem(historyKey) || '[]');
 
+                const totalTests = history.length;
+                const totalScore = history.reduce((acc, curr) => acc + (curr.mainScore || 0), 0);
+                const avgScore = totalTests > 0 ? Math.round(totalScore / totalTests) : 0;
+
+                // Estimate words learned: assuming ~20 words per test on average if not trackable
+                // Or better, if we can't easily get word count, just use a multiplier
+                const wordsLearned = totalTests * 20;
+
+                // Estimate study time: 15 mins per test
+                const studyMinutes = totalTests * 15;
+                const studyTime = studyMinutes < 60 ? `${studyMinutes}m` : `${(studyMinutes / 60).toFixed(1)}h`;
+
+                setStats({
+                    wordsLearned: wordsLearned,
+                    totalPoints: totalScore * 10, // 10 points per score
+                    accuracy: `${avgScore}%`,
+                    studyTime: studyTime
+                });
+
+                // 2. Fetch Incomplete Lessons
+                const curriculumKey = `curriculums_${user.id}`;
+                const curriculums = JSON.parse(localStorage.getItem(curriculumKey) || '[]');
                 const incomplete = getIncompleteLessons(user, curriculums, history);
                 setIncompleteLessons(incomplete);
 
@@ -68,6 +72,38 @@ const Dashboard = () => {
 
         fetchData();
     }, [user]);
+
+    // Calculate Leaderboard (Memoized or inside render if small)
+    const getLeaderboard = () => {
+        const leaderboard = [];
+        // Scan all keys in localStorage
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key.startsWith('learning_history_')) {
+                const userId = key.replace('learning_history_', '');
+                const history = JSON.parse(localStorage.getItem(key) || '[]');
+                const totalScore = history.reduce((acc, curr) => acc + (curr.mainScore || 0), 0) * 10;
+
+                // Try to find user name
+                // We might not have access to all users' names easily if they are not stored centrally
+                // But we can check 'users' key if it exists (admin usually has it)
+                // Or just use "Student {ID}"
+                let name = `Student ${userId.substr(0, 4)}`;
+                const users = JSON.parse(localStorage.getItem('users') || '[]');
+                const foundUser = users.find(u => u.id === userId);
+                if (foundUser) name = foundUser.full_name || foundUser.username;
+
+                if (history.length > 0) {
+                    leaderboard.push({ id: userId, name, score: totalScore });
+                }
+            }
+        }
+
+        // Sort by score desc
+        return leaderboard.sort((a, b) => b.score - a.score).slice(0, 5);
+    };
+
+    const leaderboardData = getLeaderboard();
 
     if (loading) return <div className="p-8 text-center font-bold">Loading dashboard...</div>;
 
@@ -209,14 +245,22 @@ const Dashboard = () => {
                 <div className="space-y-6">
                     <h2 className="text-2xl font-black text-black uppercase border-b-4 border-black inline-block pr-4">Leaderboard</h2>
                     <Card className="p-0 overflow-hidden bg-white">
-                        {[1, 2, 3, 4, 5].map((item) => (
-                            <div key={item} className="flex items-center px-6 py-4 border-b-2 border-black last:border-0 hover:bg-slate-50 transition-colors">
-                                <span className={`w-8 font-black text-xl ${item <= 3 ? 'text-accent' : 'text-slate-400'}`}>#{item}</span>
-                                <div className="w-10 h-10 bg-slate-200 border-2 border-black mx-3" />
-                                <span className="font-bold text-black flex-1 uppercase">Student {item}</span>
-                                <span className="font-black text-primary font-mono">1,200</span>
+                        {leaderboardData.length === 0 ? (
+                            <div className="p-8 text-center text-slate-500 font-bold">
+                                No records yet. Be the first!
                             </div>
-                        ))}
+                        ) : (
+                            leaderboardData.map((item, index) => (
+                                <div key={item.id} className="flex items-center px-6 py-4 border-b-2 border-black last:border-0 hover:bg-slate-50 transition-colors">
+                                    <span className={`w-8 font-black text-xl ${index < 3 ? 'text-accent' : 'text-slate-400'}`}>#{index + 1}</span>
+                                    <div className="w-10 h-10 bg-slate-200 border-2 border-black mx-3 flex items-center justify-center font-bold text-xs overflow-hidden">
+                                        {item.name.charAt(0)}
+                                    </div>
+                                    <span className="font-bold text-black flex-1 uppercase truncate pr-2">{item.name}</span>
+                                    <span className="font-black text-primary font-mono">{item.score.toLocaleString()}</span>
+                                </div>
+                            ))
+                        )}
                     </Card>
                 </div>
             </div>

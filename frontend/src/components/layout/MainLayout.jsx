@@ -82,7 +82,7 @@ const MainLayout = ({ menuItems }) => {
                             className="flex items-center w-full px-4 py-3 bg-white border-2 border-black shadow-neo hover:bg-accent hover:text-white transition-all font-bold"
                         >
                             <LogOut className="w-5 h-5 mr-3" />
-                            <span>SIGN OUT</span>
+                            <span>로그아웃</span>
                         </button>
                     </div>
                 </div>

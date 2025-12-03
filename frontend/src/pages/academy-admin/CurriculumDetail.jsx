@@ -253,10 +253,9 @@ const CurriculumDetail = () => {
                                                             onChange={(e) => handleSettingChange(index, 'testType', e.target.value)}
                                                             className="w-full p-1 border-2 border-black text-sm font-bold focus:outline-none"
                                                         >
-                                                            <option value="typing_english">타이핑 (영어)</option>
-                                                            <option value="scramble_select">순서 섞기 (선택)</option>
-                                                            <option value="scramble_typing">순서 섞기 (타자)</option>
-                                                            <option value="choice">객관식</option>
+                                                            <option value="typing_english">영어 타자 (Typing)</option>
+                                                            <option value="multiple_choice">4지 선다 (Multiple Choice)</option>
+                                                            <option value="scramble">순서 섞기 (Word Scramble)</option>
                                                         </select>
                                                     </div>
                                                     <div>
