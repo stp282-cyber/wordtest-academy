@@ -11,6 +11,7 @@ import StudentList from './pages/academy-admin/StudentList';
 import ProgressManagement from './pages/academy-admin/ProgressManagement';
 import ClassList from './pages/academy-admin/ClassList';
 import ClassDetail from './pages/academy-admin/ClassDetail';
+import StudentClassLog from './pages/academy-admin/StudentClassLog';
 import Reports from './pages/academy-admin/Reports';
 import AcademySettings from './pages/academy-admin/Settings';
 import CurriculumList from './pages/academy-admin/CurriculumList';
@@ -96,6 +97,7 @@ function App() {
                         <Route path="curriculums" element={<CurriculumList />} />
                         <Route path="curriculums/:id" element={<CurriculumDetail />} />
                         <Route path="students" element={<StudentList />} />
+                        <Route path="students/:studentId/class-log" element={<StudentClassLog />} />
                         <Route path="progress" element={<ProgressManagement />} />
                         <Route path="classes" element={<ClassList />} />
                         <Route path="classes/:id" element={<ClassDetail />} />

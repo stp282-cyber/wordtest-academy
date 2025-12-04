@@ -35,6 +35,7 @@ app.use('/api/academies', require('./routes/academies'));
 app.use('/api/billing', require('./routes/billing'));
 app.use('/api/wordbooks', require('./routes/wordbooks'));
 app.use('/api/users', require('./routes/users'));
+app.use('/api/students', require('./routes/users')); // Alias for students
 app.use('/api/progress', require('./routes/progress'));
 app.use('/api/classes', require('./routes/classes'));
 app.use('/api/curriculum', require('./routes/curriculum'));
@@ -46,19 +47,6 @@ app.use('/api/announcements', require('./routes/announcements'));
 app.use('/api/messages', require('./routes/messages'));
 app.use('/api/backup', require('./routes/backup'));
 app.use('/api/analytics', require('./routes/analytics'));
-
-const path = require('path');
-
-// Serve static files from the React app
-// Adjust path based on where server.js is located (backend/src/server.js)
-const frontendPath = path.join(__dirname, '../../frontend/dist');
-app.use(express.static(frontendPath));
-
-// The "catchall" handler: for any request that doesn't
-// match one above, send back React's index.html file.
-app.get('*', (req, res) => {
-    res.sendFile(path.join(frontendPath, 'index.html'));
-});
 
 // Socket.io
 io.on('connection', (socket) => {

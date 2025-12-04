@@ -5,19 +5,8 @@ const auth = require('../middleware/auth');
 const requireRole = require('../middleware/role');
 const { ROLES } = require('../config/constants');
 
-// Get All Users (Super Admin only)
-router.get('/', auth, requireRole([ROLES.SUPER_ADMIN]), async (req, res) => {
-    try {
-        const users = await User.findAll();
-        res.json(users);
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Server error' });
-    }
-});
-
 // Create Student (Academy Admin only)
-router.post('/students', auth, requireRole([ROLES.ACADEMY_ADMIN]), async (req, res) => {
+router.post('/', auth, requireRole([ROLES.ACADEMY_ADMIN]), async (req, res) => {
     try {
         const { username, password, full_name, phone, email } = req.body;
 
@@ -45,23 +34,24 @@ router.post('/students', auth, requireRole([ROLES.ACADEMY_ADMIN]), async (req, r
 });
 
 // Get All Students in Academy
-router.get('/students', auth, requireRole([ROLES.ACADEMY_ADMIN, ROLES.TEACHER]), async (req, res) => {
+router.get('/', auth, requireRole([ROLES.ACADEMY_ADMIN, ROLES.TEACHER]), async (req, res) => {
     try {
+        console.log('GET /api/students called');
+        console.log('User:', req.user);
         const students = await User.findByAcademy(req.user.academy_id, ROLES.STUDENT);
+        console.log(`Found ${students.length} students`);
         res.json(students);
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Server error' });
+        console.error('Error in GET /api/students:', error);
+        res.status(500).json({ message: 'Server error', error: error.message });
     }
 });
 
-// Get Single Student by ID
-router.get('/students/:id', auth, requireRole([ROLES.ACADEMY_ADMIN, ROLES.TEACHER]), async (req, res) => {
+// Get Single Student
+router.get('/:id', auth, requireRole([ROLES.ACADEMY_ADMIN, ROLES.TEACHER]), async (req, res) => {
     try {
         const student = await User.findById(req.params.id);
-        if (!student) {
-            return res.status(404).json({ message: 'Student not found' });
-        }
+        if (!student) return res.status(404).json({ message: 'Student not found' });
 
         // Ensure student belongs to this academy
         if (student.academy_id !== req.user.academy_id) {
@@ -76,7 +66,7 @@ router.get('/students/:id', auth, requireRole([ROLES.ACADEMY_ADMIN, ROLES.TEACHE
 });
 
 // Update Student
-router.put('/students/:id', auth, requireRole([ROLES.ACADEMY_ADMIN]), async (req, res) => {
+router.put('/:id', auth, requireRole([ROLES.ACADEMY_ADMIN]), async (req, res) => {
     try {
         const student = await User.findById(req.params.id);
         if (!student) return res.status(404).json({ message: 'Student not found' });
@@ -95,7 +85,7 @@ router.put('/students/:id', auth, requireRole([ROLES.ACADEMY_ADMIN]), async (req
 });
 
 // Delete Student
-router.delete('/students/:id', auth, requireRole([ROLES.ACADEMY_ADMIN]), async (req, res) => {
+router.delete('/:id', auth, requireRole([ROLES.ACADEMY_ADMIN]), async (req, res) => {
     try {
         const student = await User.findById(req.params.id);
         if (!student) return res.status(404).json({ message: 'Student not found' });

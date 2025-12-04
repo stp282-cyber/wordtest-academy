@@ -65,7 +65,8 @@ const StudentList = () => {
                 className: s.className || s.class || '미배정',
                 curriculumStatus: s.curriculumStatus || '미등록',
                 curriculumName: s.curriculumName || '-',
-                weeklyProgress: s.weeklyProgress || s.progress || 0
+                weeklyProgress: s.weeklyProgress || s.progress || 0,
+                status: s.status && s.status.toLowerCase() === 'active' ? 'Active' : 'Inactive'
             }));
             setStudents(migrated);
             // Save migrated data
@@ -278,7 +279,12 @@ const StudentList = () => {
                                                     <User className="w-4 h-4" />
                                                 </div>
                                                 <div>
-                                                    <div className="font-black">{student.name}</div>
+                                                    <div
+                                                        className="font-black cursor-pointer hover:text-blue-600 hover:underline"
+                                                        onClick={() => navigate(`/academy-admin/students/${student.id}/class-log`)}
+                                                    >
+                                                        {student.name}
+                                                    </div>
                                                     <div className="text-xs text-slate-500 font-mono">{student.email || '-'}</div>
                                                 </div>
                                             </div>

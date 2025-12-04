@@ -4,8 +4,8 @@
  * 배포 시 API 연동을 위한 서비스 레이어
  */
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || null;
-const USE_API = !!API_BASE_URL;
+const API_BASE_URL = import.meta.env.VITE_API_URL || '';
+const USE_API = true; // Force API usage for now since we are connected to backend
 
 /**
  * 모든 학생 목록 조회
@@ -28,6 +28,38 @@ export const getStudents = async () => {
     } else {
         const data = localStorage.getItem('students');
         return JSON.parse(data || '[]');
+    }
+};
+
+/**
+ * 학생 상세 조회
+ */
+export const getStudent = async (id) => {
+    if (USE_API) {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_BASE_URL}/api/students/${id}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to fetch student');
+        }
+
+        return await response.json();
+    } else {
+        const students = await getStudents();
+        // Try to match by ID (number) or studentId (string) or UUID
+        const student = students.find(s =>
+            String(s.id) === String(id) || s.studentId === id || s.username === id
+        );
+
+        if (!student) {
+            throw new Error('Student not found');
+        }
+        return student;
     }
 };
 

@@ -13,7 +13,7 @@ class User {
         try {
             const sql = `
         INSERT INTO users (id, academy_id, username, password, name, role, phone, email, status)
-        VALUES (:id, :academy_id, :username, :password, :name, :role, :phone, :email, 'active')
+        VALUES (:id, :academy_id, :username, :password, :name, :role, :phone, :email, :status)
       `;
 
             await connection.execute(sql, {
@@ -24,7 +24,8 @@ class User {
                 name: userData.full_name,
                 role: userData.role,
                 phone: userData.phone || null,
-                email: userData.email || null
+                email: userData.email || null,
+                status: userData.status || 'active'
             });
 
             await connection.commit();
@@ -150,7 +151,7 @@ class User {
         const pool = database.getPool();
         const connection = await pool.getConnection();
         try {
-            let sql = `SELECT id, academy_id, username, name, role, phone, email, created_at, last_login FROM users WHERE academy_id = :academyId`;
+            let sql = `SELECT id, academy_id, username, name, role, phone, email, status, created_at, last_login FROM users WHERE academy_id = :academyId`;
             const binds = { academyId };
 
             if (role) {
@@ -189,6 +190,7 @@ class User {
             if (data.full_name) { sql += ', name = :name'; binds.name = data.full_name; }
             if (data.phone !== undefined) { sql += ', parent_phone = :phone'; binds.phone = data.phone; }
             if (data.email !== undefined) { sql += ', email = :email'; binds.email = data.email; }
+            if (data.status) { sql += ', status = :status'; binds.status = data.status; }
             if (data.password) {
                 const passwordHash = await bcrypt.hash(data.password, 10);
                 sql += ', password = :password';
