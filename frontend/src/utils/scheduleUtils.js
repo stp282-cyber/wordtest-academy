@@ -189,8 +189,17 @@ export const generateScheduleForDate = (curriculum, targetDate) => {
     if (dayIndex === -1) return null; // Not a learning day
 
     // Calculate which week and learning day number
-    const weekOffset = Math.floor(daysDiff / 7);
-    const learningDaysElapsed = weekOffset * days.length + dayIndex;
+    // Count actual learning days from start date to target date
+    let learningDaysElapsed = 0;
+    const tempDate = new Date(startDateObj);
+    while (tempDate < targetDateObj) {
+        const tempDayOfWeek = tempDate.getDay();
+        const tempDayId = dayIds[tempDayOfWeek];
+        if (days.includes(tempDayId)) {
+            learningDaysElapsed++;
+        }
+        tempDate.setDate(tempDate.getDate() + 1);
+    }
 
     // Load curriculum details
     const savedCurriculums = JSON.parse(localStorage.getItem('curriculums') || '[]');

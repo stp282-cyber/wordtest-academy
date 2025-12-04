@@ -57,7 +57,14 @@ const StudentClassLog = () => {
             const storageKey = `curriculums_${student.id}`;
             const savedCurriculums = localStorage.getItem(storageKey);
             if (savedCurriculums) {
-                setCurriculums(JSON.parse(savedCurriculums));
+                const parsedCurriculums = JSON.parse(savedCurriculums);
+                // Sort by startDate to ensure chronological order
+                const sortedCurriculums = parsedCurriculums.sort((a, b) => {
+                    const dateA = new Date(a.startDate);
+                    const dateB = new Date(b.startDate);
+                    return dateA - dateB;
+                });
+                setCurriculums(sortedCurriculums);
             } else {
                 setCurriculums([]);
             }
