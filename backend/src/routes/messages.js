@@ -48,8 +48,6 @@ router.get('/conversations', auth, async (req, res) => {
         const pool = database.getPool();
         const connection = await pool.getConnection();
 
-        // Complex query to get latest message per user
-        // Simplified: Get all messages involving user
         const sql = `
         SELECT * FROM messages
         WHERE sender_id = :userId OR receiver_id = :userId
@@ -57,9 +55,68 @@ router.get('/conversations', auth, async (req, res) => {
     `;
 
         const result = await connection.execute(sql, { userId: req.user.id });
+        const messages = result.rows;
+
+        // Group by other user
+        const conversations = {};
+        for (const msg of messages) {
+            const otherId = msg.SENDER_ID === req.user.id ? msg.RECEIVER_ID : msg.SENDER_ID;
+            if (!conversations[otherId]) {
+                // Fetch user details
+                const userSql = `SELECT * FROM users WHERE id = :id`;
+                const userResult = await connection.execute(userSql, { id: otherId });
+                const user = userResult.rows[0];
+
+                conversations[otherId] = {
+                    userId: otherId,
+                    name: user ? (user.NAME || user.FULL_NAME) : 'Unknown',
+                    lastMessage: msg.CONTENT,
+                    lastMessageTime: msg.SENT_AT,
+                    unreadCount: 0 // TODO: Implement unread count
+                };
+            }
+        }
+
         await connection.close();
 
-        res.json(result.rows);
+        res.json(Object.values(conversations));
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// Get Messages with specific user
+router.get('/:userId', auth, async (req, res) => {
+    try {
+        const pool = database.getPool();
+        const connection = await pool.getConnection();
+
+        const sql = `
+        SELECT * FROM messages
+        WHERE (sender_id = :myId AND receiver_id = :otherId)
+           OR (sender_id = :otherId AND receiver_id = :myId)
+        ORDER BY sent_at ASC
+    `;
+
+        const result = await connection.execute(sql, {
+            myId: req.user.id,
+            otherId: req.params.userId
+        });
+
+        await connection.close();
+
+        // Map to frontend friendly format
+        const messages = result.rows.map(row => ({
+            id: row.ID,
+            senderId: row.SENDER_ID,
+            receiverId: row.RECEIVER_ID,
+            content: row.CONTENT,
+            timestamp: row.SENT_AT,
+            isMine: row.SENDER_ID === req.user.id
+        }));
+
+        res.json(messages);
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Server error' });

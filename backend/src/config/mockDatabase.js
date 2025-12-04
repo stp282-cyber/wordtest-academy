@@ -73,6 +73,10 @@ const store = {
     curriculum_items: [
         { id: 'ci-1', template_id: 'template-1', wordbook_id: 'wb-1', order_index: 1 },
         { id: 'ci-2', template_id: 'template-1', wordbook_id: 'wb-2', order_index: 2 }
+    ],
+    messages: [
+        { id: 'msg-1', academy_id: 'academy-1', sender_id: 'user-admin-1', receiver_id: 'user-student-1', content: 'Welcome to the academy!', sent_at: new Date('2024-11-01T10:00:00') },
+        { id: 'msg-2', academy_id: 'academy-1', sender_id: 'user-student-1', receiver_id: 'user-admin-1', content: 'Thank you!', sent_at: new Date('2024-11-01T10:05:00') }
     ]
 };
 
@@ -266,7 +270,49 @@ class MockConnection {
             return { rows: [], rowsAffected: 1 };
         }
 
-        // 8. UPDATE queries
+        // 8. Messages queries
+        if (sqlLower.includes('from messages')) {
+            // Filter by sender/receiver
+            const userId = normalizedBinds.userid || normalizedBinds.senderid || normalizedBinds.receiverid;
+
+            let messages = store.messages;
+
+            if (userId) {
+                messages = messages.filter(m => m.sender_id === userId || m.receiver_id === userId);
+            }
+
+            // Sort by sent_at desc
+            messages.sort((a, b) => new Date(b.sent_at) - new Date(a.sent_at));
+
+            const formattedMessages = messages.map(m => ({
+                ID: m.id,
+                ACADEMY_ID: m.academy_id,
+                SENDER_ID: m.sender_id,
+                RECEIVER_ID: m.receiver_id,
+                CONTENT: m.content,
+                SENT_AT: m.sent_at,
+                READ_AT: m.read_at
+            }));
+
+            return { rows: formattedMessages };
+        }
+
+        if (sqlLower.includes('insert into messages')) {
+            const newMessage = {
+                id: normalizedBinds.id || `msg-${Date.now()}`,
+                academy_id: normalizedBinds.academyid,
+                sender_id: normalizedBinds.senderid,
+                receiver_id: normalizedBinds.receiverid,
+                content: normalizedBinds.content,
+                sent_at: new Date(),
+                read_at: null
+            };
+            store.messages.push(newMessage);
+            console.log('[MockDB] Inserted message:', newMessage);
+            return { rows: [], rowsAffected: 1 };
+        }
+
+        // 9. UPDATE queries
         if (sqlLower.includes('update ')) {
             console.log('[MockDB] Update query executed');
             return { rows: [], rowsAffected: 1 };
