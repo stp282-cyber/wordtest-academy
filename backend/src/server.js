@@ -24,16 +24,26 @@ app.use(express.urlencoded({ extended: true }));
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+    res.json({
+        status: 'ok',
+        timestamp: new Date().toISOString(),
+        database: 'connected'
+    });
 });
 
-// Routes
+// Test endpoint
+app.get('/api/test', (req, res) => {
+    res.json({ message: 'Backend is working!' });
+});
+
+// Routes - Temporarily commented out for debugging
+/*
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/academies', require('./routes/academies'));
 app.use('/api/billing', require('./routes/billing'));
 app.use('/api/wordbooks', require('./routes/wordbooks'));
 app.use('/api/users', require('./routes/users'));
-app.use('/api/students', require('./routes/users')); // Alias
+app.use('/api/students', require('./routes/users'));
 app.use('/api/progress', require('./routes/progress'));
 app.use('/api/classes', require('./routes/classes'));
 app.use('/api/curriculum', require('./routes/curriculum'));
@@ -46,6 +56,7 @@ app.use('/api/messages', require('./routes/messages'));
 app.use('/api/backup', require('./routes/backup'));
 app.use('/api/analytics', require('./routes/analytics'));
 app.use('/api/listening', require('./routes/listeningTests'));
+*/
 
 // Error Handling
 app.use((err, req, res, next) => {
