@@ -36,10 +36,11 @@ app.get('/api/test', (req, res) => {
     res.json({ message: 'Backend is working!' });
 });
 
-// Routes - Will be added one by one after frontend deployment
-// TODO: Add routes back after testing
-/*
+// Routes - Enabling auth for login
 app.use('/api/auth', require('./routes/auth'));
+
+// TODO: Add more routes as needed
+/*
 app.use('/api/users', require('./routes/users'));
 app.use('/api/academies', require('./routes/academies'));
 app.use('/api/wordbooks', require('./routes/wordbooks'));
