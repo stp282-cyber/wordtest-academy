@@ -22,8 +22,7 @@ async function seedDatabase() {
                 password_hash: superAdminPassword,
                 full_name: 'Super Admin',
                 role: 'SUPER_ADMIN',
-                academy_id: null,
-                status: 'active'
+                academy_id: null
             }]);
 
         if (adminError && adminError.code !== '23505') {
@@ -75,8 +74,7 @@ async function seedDatabase() {
                 password_hash: studentPassword,
                 full_name: 'Academy Admin',
                 role: 'ACADEMY_ADMIN',
-                academy_id: academyId,
-                status: 'active'
+                academy_id: academyId
             },
             {
                 id: uuidv4(),
@@ -85,8 +83,7 @@ async function seedDatabase() {
                 password_hash: studentPassword,
                 full_name: 'John Doe',
                 role: 'STUDENT',
-                academy_id: academyId,
-                status: 'active'
+                academy_id: academyId
             },
             {
                 id: uuidv4(),
@@ -95,8 +92,7 @@ async function seedDatabase() {
                 password_hash: studentPassword,
                 full_name: 'Test Student 1',
                 role: 'STUDENT',
-                academy_id: academyId,
-                status: 'active'
+                academy_id: academyId
             }
         ];
 
