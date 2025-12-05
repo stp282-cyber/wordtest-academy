@@ -3,136 +3,123 @@ const { v4: uuidv4 } = require('uuid');
 
 class Class {
     static async create(data) {
-        const pool = database.getPool();
-        const connection = await pool.getConnection();
+        const supabase = database.getClient();
         const id = uuidv4();
 
-        try {
-            const sql = `
-        INSERT INTO classes (id, academy_id, name, description, teacher_id)
-        VALUES (:id, :academy_id, :name, :description, :teacher_id)
-      `;
-
-            await connection.execute(sql, {
+        const { data: classData, error } = await supabase
+            .from('classes')
+            .insert([{
                 id: id,
                 academy_id: data.academy_id,
                 name: data.name,
                 description: data.description || '',
                 teacher_id: data.teacher_id || null
-            });
+            }])
+            .select()
+            .single();
 
-            await connection.commit();
-            return { id, ...data };
-        } catch (err) {
-            await connection.rollback();
-            throw err;
-        } finally {
-            if (connection) await connection.close();
-        }
+        if (error) throw error;
+        return classData;
     }
 
     static async findByAcademy(academyId) {
-        const pool = database.getPool();
-        const connection = await pool.getConnection();
-        try {
-            const result = await connection.execute(
-                `SELECT * FROM classes WHERE academy_id = :academyId ORDER BY name ASC`,
-                { academyId }
-            );
-            return result.rows;
-        } finally {
-            if (connection) await connection.close();
-        }
+        const supabase = database.getClient();
+
+        const { data, error } = await supabase
+            .from('classes')
+            .select('*')
+            .eq('academy_id', academyId)
+            .order('name', { ascending: true });
+
+        if (error) throw error;
+        return data;
     }
 
     static async findById(id) {
-        const pool = database.getPool();
-        const connection = await pool.getConnection();
-        try {
-            const result = await connection.execute(
-                `SELECT * FROM classes WHERE id = :id`,
-                [id]
-            );
-            return result.rows[0];
-        } finally {
-            if (connection) await connection.close();
+        const supabase = database.getClient();
+
+        const { data, error } = await supabase
+            .from('classes')
+            .select('*')
+            .eq('id', id)
+            .single();
+
+        if (error) {
+            if (error.code === 'PGRST116') return null; // Not found
+            throw error;
         }
+
+        return data;
     }
 
     static async addStudent(classId, studentId) {
-        const pool = database.getPool();
-        const connection = await pool.getConnection();
-        try {
-            const sql = `
-        INSERT INTO class_students (class_id, student_id)
-        VALUES (:classId, :studentId)
-      `;
-            await connection.execute(sql, { classId, studentId });
-            await connection.commit();
-            return true;
-        } catch (err) {
-            await connection.rollback();
-            if (err.code === 'ORA-00001') return false; // Already exists
-            throw err;
-        } finally {
-            if (connection) await connection.close();
+        const supabase = database.getClient();
+
+        const { error } = await supabase
+            .from('class_students')
+            .insert([{
+                class_id: classId,
+                student_id: studentId
+            }]);
+
+        if (error) {
+            // Check for unique constraint violation (student already in class)
+            if (error.code === '23505') return false;
+            throw error;
         }
+
+        return true;
     }
 
     static async getStudents(classId) {
-        const pool = database.getPool();
-        const connection = await pool.getConnection();
-        try {
-            const sql = `
-        SELECT u.* 
-        FROM users u
-        JOIN class_students cs ON u.id = cs.student_id
-        WHERE cs.class_id = :classId
-      `;
-            const result = await connection.execute(sql, { classId });
-            return result.rows;
-        } finally {
-            if (connection) await connection.close();
-        }
+        const supabase = database.getClient();
+
+        const { data, error } = await supabase
+            .from('class_students')
+            .select(`
+                student_id,
+                users (*)
+            `)
+            .eq('class_id', classId);
+
+        if (error) throw error;
+
+        // Extract user data from nested structure
+        return data.map(item => item.users);
     }
 
-    static async update(id, data) {
-        const pool = database.getPool();
-        const connection = await pool.getConnection();
-        try {
-            let sql = 'UPDATE classes SET updated_at = CURRENT_TIMESTAMP';
-            const binds = { id };
+    static async update(id, updateData) {
+        const supabase = database.getClient();
 
-            if (data.name) { sql += ', name = :name'; binds.name = data.name; }
-            if (data.description !== undefined) { sql += ', description = :description'; binds.description = data.description; }
-            if (data.teacher_id !== undefined) { sql += ', teacher_id = :teacher_id'; binds.teacher_id = data.teacher_id; }
+        const updates = {
+            updated_at: new Date().toISOString()
+        };
 
-            sql += ' WHERE id = :id';
+        if (updateData.name) updates.name = updateData.name;
+        if (updateData.description !== undefined) updates.description = updateData.description;
+        if (updateData.teacher_id !== undefined) updates.teacher_id = updateData.teacher_id;
 
-            await connection.execute(sql, binds);
-            await connection.commit();
-            return this.findById(id);
-        } catch (err) {
-            await connection.rollback();
-            throw err;
-        } finally {
-            if (connection) await connection.close();
-        }
+        const { data, error } = await supabase
+            .from('classes')
+            .update(updates)
+            .eq('id', id)
+            .select()
+            .single();
+
+        if (error) throw error;
+        return data;
     }
 
     static async delete(id) {
-        const pool = database.getPool();
-        const connection = await pool.getConnection();
-        try {
-            await connection.execute(`DELETE FROM classes WHERE id = :id`, [id]);
-            await connection.commit();
-            return true;
-        } catch (err) {
-            await connection.rollback();
-            throw err;
-        } finally {
-            if (connection) await connection.close();
-        }
+        const supabase = database.getClient();
+
+        const { error } = await supabase
+            .from('classes')
+            .delete()
+            .eq('id', id);
+
+        if (error) throw error;
+        return true;
     }
 }
 

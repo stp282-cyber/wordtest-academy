@@ -1,20 +1,14 @@
-// const database = require('../config/database');
-const database = require('../config/mockDatabase');
+const database = require('../config/database');
 const { v4: uuidv4 } = require('uuid');
 
 class Word {
     static async create(data) {
-        const pool = database.getPool();
-        const connection = await pool.getConnection();
+        const supabase = database.getClient();
         const id = uuidv4();
 
-        try {
-            const sql = `
-        INSERT INTO words (id, wordbook_id, english, korean, part_of_speech, example_sentence, difficulty_level, order_index)
-        VALUES (:id, :wordbook_id, :english, :korean, :part_of_speech, :example_sentence, :difficulty_level, :order_index)
-      `;
-
-            await connection.execute(sql, {
+        const { data: word, error } = await supabase
+            .from('words')
+            .insert([{
                 id: id,
                 wordbook_id: data.wordbook_id,
                 english: data.english,
@@ -23,69 +17,57 @@ class Word {
                 example_sentence: data.example_sentence || null,
                 difficulty_level: data.difficulty_level || 1,
                 order_index: data.order_index || 0
-            });
+            }])
+            .select()
+            .single();
 
-            await connection.commit();
-            return { id, ...data };
-        } catch (err) {
-            await connection.rollback();
-            throw err;
-        } finally {
-            if (connection) await connection.close();
-        }
+        if (error) throw error;
+        return word;
     }
 
     static async findByWordbook(wordbookId) {
-        const pool = database.getPool();
-        const connection = await pool.getConnection();
-        try {
-            const result = await connection.execute(
-                `SELECT * FROM words WHERE wordbook_id = :wordbookId ORDER BY order_index ASC`,
-                { wordbookId }
-            );
-            return result.rows;
-        } finally {
-            if (connection) await connection.close();
-        }
+        const supabase = database.getClient();
+
+        const { data, error } = await supabase
+            .from('words')
+            .select('*')
+            .eq('wordbook_id', wordbookId)
+            .order('order_index', { ascending: true });
+
+        if (error) throw error;
+        return data;
     }
 
-    static async update(id, data) {
-        const pool = database.getPool();
-        const connection = await pool.getConnection();
-        try {
-            let sql = 'UPDATE words SET id = id'; // Dummy update to start chain
-            const binds = { id };
+    static async update(id, updateData) {
+        const supabase = database.getClient();
 
-            if (data.english) { sql += ', english = :english'; binds.english = data.english; }
-            if (data.korean) { sql += ', korean = :korean'; binds.korean = data.korean; }
-            if (data.example_sentence !== undefined) { sql += ', example_sentence = :example_sentence'; binds.example_sentence = data.example_sentence; }
+        const updates = {};
 
-            sql += ' WHERE id = :id';
+        if (updateData.english) updates.english = updateData.english;
+        if (updateData.korean) updates.korean = updateData.korean;
+        if (updateData.example_sentence !== undefined) updates.example_sentence = updateData.example_sentence;
 
-            await connection.execute(sql, binds);
-            await connection.commit();
-            return true;
-        } catch (err) {
-            await connection.rollback();
-            throw err;
-        } finally {
-            if (connection) await connection.close();
-        }
+        const { data, error } = await supabase
+            .from('words')
+            .update(updates)
+            .eq('id', id)
+            .select()
+            .single();
+
+        if (error) throw error;
+        return data;
     }
 
     static async delete(id) {
-        const pool = database.getPool();
-        const connection = await pool.getConnection();
-        try {
-            await connection.execute(`DELETE FROM words WHERE id = :id`, [id]);
-            await connection.commit();
-            return true;
-        } catch (err) {
-            await connection.rollback();
-            throw err;
-        } finally {
-            if (connection) await connection.close();
-        }
+        const supabase = database.getClient();
+
+        const { error } = await supabase
+            .from('words')
+            .delete()
+            .eq('id', id);
+
+        if (error) throw error;
+        return true;
     }
 }
 

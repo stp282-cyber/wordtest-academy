@@ -6,7 +6,7 @@ const auth = require('../middleware/auth');
 const requireRole = require('../middleware/role');
 const { ROLES } = require('../config/constants');
 const multer = require('multer');
-const upload = multer({ dest: 'uploads/' });
+const upload = multer({ dest: '/tmp/' }); // Use /tmp for Vercel serverless
 const ExcelService = require('../services/ExcelService');
 const fs = require('fs');
 

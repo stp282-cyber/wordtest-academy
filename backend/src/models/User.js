@@ -1,87 +1,71 @@
 const database = require('../config/database');
-// const database = require('../config/mockDatabase');
 const { v4: uuidv4 } = require('uuid');
 const bcrypt = require('bcrypt');
 
 class User {
     static async create(userData) {
-        const pool = database.getPool();
-        const connection = await pool.getConnection();
+        const supabase = database.getClient();
         const id = uuidv4();
         const passwordHash = await bcrypt.hash(userData.password, 10);
 
-        try {
-            const sql = `
-        INSERT INTO users (id, academy_id, username, password, name, role, parent_phone, email, status)
-        VALUES (:id, :academy_id, :username, :password, :name, :role, :phone, :email, 'active')
-      `;
-
-            await connection.execute(sql, {
+        const { data, error } = await supabase
+            .from('users')
+            .insert([{
                 id: id,
                 academy_id: userData.academy_id || null,
                 username: userData.username,
                 password: passwordHash,
-                name: userData.full_name || userData.username, // Use username as fallback
+                name: userData.full_name || userData.username,
                 role: userData.role,
-                phone: userData.phone || null,
-                email: userData.email || `${userData.username}@student.local` // Generate default email if not provided
-            });
+                parent_phone: userData.phone || null,
+                email: userData.email || `${userData.username}@student.local`,
+                status: 'active'
+            }])
+            .select()
+            .single();
 
-            await connection.commit();
-            const { password, ...userWithoutPassword } = userData;
-            return { id, ...userWithoutPassword };
-        } catch (err) {
-            await connection.rollback();
-            throw err;
-        } finally {
-            if (connection) await connection.close();
-        }
+        if (error) throw error;
+
+        const { password, ...userWithoutPassword } = data;
+        return userWithoutPassword;
     }
 
     static async findByUsername(username, academyId) {
-        const pool = database.getPool();
-        const connection = await pool.getConnection();
-        try {
-            // Check both username and email
-            let sql = `SELECT * FROM users WHERE (username = :username OR email = :username)`;
-            const binds = { username };
+        const supabase = database.getClient();
 
-            if (academyId) {
-                sql += ` AND academy_id = :academyId`;
-                binds.academyId = academyId;
-            }
+        let query = supabase
+            .from('users')
+            .select('*')
+            .or(`username.eq.${username},email.eq.${username}`);
 
-            const result = await connection.execute(sql, binds);
-
-            // Map Oracle columns to expected format
-            if (result.rows && result.rows.length > 0) {
-                const row = result.rows[0];
-                console.log('Debug: Raw user row:', row); // Debug log
-
-                const user = {
-                    id: row.ID || row.id,
-                    academy_id: row.ACADEMY_ID || row.academy_id,
-                    username: row.USERNAME || row.username,
-                    email: row.EMAIL || row.email,
-                    password: row.PASSWORD || row.password_hash || row.password, // Handle various password fields
-                    password_hash: row.PASSWORD || row.password_hash,
-                    name: row.NAME || row.full_name || row.name,
-                    full_name: row.NAME || row.full_name || row.name,
-                    role: row.ROLE || row.role,
-                    class_id: row.CLASS_ID || row.class_id,
-                    student_number: row.STUDENT_NUMBER || row.student_number,
-                    parent_phone: row.PARENT_PHONE || row.parent_phone,
-                    status: row.STATUS || row.status,
-                    last_login: row.LAST_LOGIN || row.last_login,
-                    created_at: row.CREATED_AT || row.created_at,
-                    updated_at: row.UPDATED_AT || row.updated_at
-                };
-                return user;
-            }
-            return null;
-        } finally {
-            if (connection) await connection.close();
+        if (academyId) {
+            query = query.eq('academy_id', academyId);
         }
+
+        const { data, error } = await query.maybeSingle();
+
+        if (error) throw error;
+        if (!data) return null;
+
+        // Map to expected format
+        return {
+            id: data.id,
+            academy_id: data.academy_id,
+            username: data.username,
+            email: data.email,
+            password: data.password,
+            password_hash: data.password,
+            name: data.name,
+            full_name: data.name,
+            role: data.role,
+            class_id: data.class_id,
+            student_number: data.student_number,
+            parent_phone: data.parent_phone,
+            status: data.status,
+            last_login: data.last_login,
+            created_at: data.created_at,
+            updated_at: data.updated_at
+        };
     }
 
     static async findByUsernameGlobal(username) {
@@ -89,138 +73,126 @@ class User {
     }
 
     static async findAll() {
-        const pool = database.getPool();
-        const connection = await pool.getConnection();
-        try {
-            const result = await connection.execute(
-                `SELECT * FROM users ORDER BY created_at DESC`
-            );
-            return result.rows.map(row => ({
-                id: row.ID || row.id,
-                academy_id: row.ACADEMY_ID || row.academy_id,
-                username: row.USERNAME || row.username,
-                email: row.EMAIL || row.email,
-                full_name: row.NAME || row.full_name || row.name,
-                role: row.ROLE || row.role,
-                status: row.STATUS || row.status,
-                created_at: row.CREATED_AT || row.created_at,
-                last_login: row.LAST_LOGIN || row.last_login
-            }));
-        } finally {
-            if (connection) await connection.close();
-        }
+        const supabase = database.getClient();
+
+        const { data, error } = await supabase
+            .from('users')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        return data.map(row => ({
+            id: row.id,
+            academy_id: row.academy_id,
+            username: row.username,
+            email: row.email,
+            full_name: row.name,
+            role: row.role,
+            status: row.status,
+            created_at: row.created_at,
+            last_login: row.last_login
+        }));
     }
 
     static async findById(id) {
-        const pool = database.getPool();
-        const connection = await pool.getConnection();
-        try {
-            const result = await connection.execute(
-                `SELECT * FROM users WHERE id = :id`,
-                [id]
-            );
+        const supabase = database.getClient();
 
-            if (result.rows && result.rows.length > 0) {
-                const row = result.rows[0];
-                return {
-                    id: row.ID,
-                    academy_id: row.ACADEMY_ID,
-                    username: row.USERNAME,
-                    email: row.EMAIL,
-                    password: row.PASSWORD,
-                    name: row.NAME,
-                    full_name: row.NAME,
-                    role: row.ROLE,
-                    class_id: row.CLASS_ID,
-                    student_number: row.STUDENT_NUMBER,
-                    parent_phone: row.PARENT_PHONE,
-                    status: row.STATUS,
-                    last_login: row.LAST_LOGIN,
-                    created_at: row.CREATED_AT,
-                    updated_at: row.UPDATED_AT
-                };
-            }
-            return null;
-        } finally {
-            if (connection) await connection.close();
+        const { data, error } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', id)
+            .single();
+
+        if (error) {
+            if (error.code === 'PGRST116') return null; // Not found
+            throw error;
         }
+
+        return {
+            id: data.id,
+            academy_id: data.academy_id,
+            username: data.username,
+            email: data.email,
+            password: data.password,
+            name: data.name,
+            full_name: data.name,
+            role: data.role,
+            class_id: data.class_id,
+            student_number: data.student_number,
+            parent_phone: data.parent_phone,
+            status: data.status,
+            last_login: data.last_login,
+            created_at: data.created_at,
+            updated_at: data.updated_at
+        };
     }
 
     static async findByAcademy(academyId, role) {
-        const pool = database.getPool();
-        const connection = await pool.getConnection();
-        try {
-            let sql = `SELECT id, academy_id, username, name, role, parent_phone, email, created_at, last_login FROM users WHERE academy_id = :academyId`;
-            const binds = { academyId };
+        const supabase = database.getClient();
 
-            if (role) {
-                sql += ` AND role = :role`;
-                binds.role = role;
-            }
+        let query = supabase
+            .from('users')
+            .select('id, academy_id, username, name, role, parent_phone, email, created_at, last_login')
+            .eq('academy_id', academyId);
 
-            sql += ` ORDER BY name ASC`;
-
-            const result = await connection.execute(sql, binds);
-
-            // Map results
-            return result.rows.map(row => ({
-                id: row.ID,
-                academy_id: row.ACADEMY_ID,
-                username: row.USERNAME,
-                full_name: row.NAME,
-                role: row.ROLE,
-                phone: row.PARENT_PHONE, // Note: using PARENT_PHONE as phone for now based on schema
-                email: row.EMAIL,
-                created_at: row.CREATED_AT,
-                last_login: row.LAST_LOGIN
-            }));
-        } finally {
-            if (connection) await connection.close();
+        if (role) {
+            query = query.eq('role', role);
         }
+
+        const { data, error } = await query.order('name', { ascending: true });
+
+        if (error) throw error;
+
+        return data.map(row => ({
+            id: row.id,
+            academy_id: row.academy_id,
+            username: row.username,
+            full_name: row.name,
+            role: row.role,
+            phone: row.parent_phone,
+            email: row.email,
+            created_at: row.created_at,
+            last_login: row.last_login
+        }));
     }
 
-    static async update(id, data) {
-        const pool = database.getPool();
-        const connection = await pool.getConnection();
-        try {
-            let sql = 'UPDATE users SET updated_at = CURRENT_TIMESTAMP';
-            const binds = { id };
+    static async update(id, updateData) {
+        const supabase = database.getClient();
 
-            if (data.full_name) { sql += ', name = :name'; binds.name = data.full_name; }
-            if (data.phone !== undefined) { sql += ', parent_phone = :phone'; binds.phone = data.phone; }
-            if (data.email !== undefined) { sql += ', email = :email'; binds.email = data.email; }
-            if (data.password) {
-                const passwordHash = await bcrypt.hash(data.password, 10);
-                sql += ', password = :password';
-                binds.password = passwordHash;
-            }
+        const updates = {
+            updated_at: new Date().toISOString()
+        };
 
-            sql += ' WHERE id = :id';
-
-            await connection.execute(sql, binds);
-            await connection.commit();
-            return this.findById(id);
-        } catch (err) {
-            await connection.rollback();
-            throw err;
-        } finally {
-            if (connection) await connection.close();
+        if (updateData.full_name) updates.name = updateData.full_name;
+        if (updateData.phone !== undefined) updates.parent_phone = updateData.phone;
+        if (updateData.email !== undefined) updates.email = updateData.email;
+        if (updateData.password) {
+            updates.password = await bcrypt.hash(updateData.password, 10);
         }
+
+        const { data, error } = await supabase
+            .from('users')
+            .update(updates)
+            .eq('id', id)
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        return this.findById(id);
     }
 
     static async delete(id) {
-        const pool = database.getPool();
-        const connection = await pool.getConnection();
-        try {
-            await connection.execute(`DELETE FROM users WHERE id = :id`, [id]);
-            await connection.commit();
-            return true;
-        } catch (err) {
-            await connection.rollback();
-            throw err;
-        } finally {
-            if (connection) await connection.close();
-        }
+        const supabase = database.getClient();
+
+        const { error } = await supabase
+            .from('users')
+            .delete()
+            .eq('id', id);
+
+        if (error) throw error;
+        return true;
     }
 }
 

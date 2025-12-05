@@ -36,17 +36,12 @@ app.get('/api/test', (req, res) => {
     res.json({ message: 'Backend is working!' });
 });
 
-// Routes - Enabling auth for login
+// Routes
 app.use('/api/auth', require('./routes/auth'));
-
-// TODO: Add more routes as needed
-/*
 app.use('/api/users', require('./routes/users'));
 app.use('/api/academies', require('./routes/academies'));
 app.use('/api/wordbooks', require('./routes/wordbooks'));
 app.use('/api/classes', require('./routes/classes'));
-... etc
-*/
 
 // Error Handling
 app.use((err, req, res, next) => {

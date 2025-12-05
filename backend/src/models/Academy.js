@@ -1,112 +1,92 @@
-// const database = require('../config/database');
-const database = require('../config/mockDatabase');
+const database = require('../config/database');
 const { v4: uuidv4 } = require('uuid');
 
 class Academy {
     static async create(academyData) {
-        const pool = database.getPool();
-        const connection = await pool.getConnection();
+        const supabase = database.getClient();
         const id = uuidv4();
 
-        try {
-            const sql = `
-        INSERT INTO academies (id, name, subdomain, owner_id, status)
-        VALUES (:id, :name, :subdomain, :owner_id, :status)
-      `;
-
-            await connection.execute(sql, {
+        // Create academy
+        const { data: academy, error: academyError } = await supabase
+            .from('academies')
+            .insert([{
                 id: id,
                 name: academyData.name,
                 subdomain: academyData.subdomain,
                 owner_id: academyData.owner_id || null,
                 status: 'active'
-            });
+            }])
+            .select()
+            .single();
 
-            // Create default settings
-            const settingsSql = `
-        INSERT INTO academy_settings (academy_id, max_students)
-        VALUES (:academy_id, :max_students)
-      `;
-            await connection.execute(settingsSql, {
+        if (academyError) throw academyError;
+
+        // Create default settings
+        const { error: settingsError } = await supabase
+            .from('academy_settings')
+            .insert([{
                 academy_id: id,
                 max_students: 50
-            });
+            }]);
 
-            await connection.commit();
-            return { id, ...academyData };
-        } catch (err) {
-            await connection.rollback();
-            throw err;
-        } finally {
-            if (connection) {
-                try {
-                    await connection.close();
-                } catch (err) {
-                    console.error(err);
-                }
-            }
+        if (settingsError) {
+            // Rollback academy creation if settings fail
+            await supabase.from('academies').delete().eq('id', id);
+            throw settingsError;
         }
+
+        return academy;
     }
 
     static async findAll() {
-        const pool = database.getPool();
-        const connection = await pool.getConnection();
-        try {
-            const result = await connection.execute(
-                `SELECT * FROM academies ORDER BY created_at DESC`
-            );
-            return result.rows;
-        } finally {
-            if (connection) await connection.close();
-        }
+        const supabase = database.getClient();
+
+        const { data, error } = await supabase
+            .from('academies')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+        return data;
     }
 
     static async findById(id) {
-        const pool = database.getPool();
-        const connection = await pool.getConnection();
-        try {
-            const result = await connection.execute(
-                `SELECT * FROM academies WHERE id = :id`,
-                [id]
-            );
-            return result.rows[0];
-        } finally {
-            if (connection) await connection.close();
+        const supabase = database.getClient();
+
+        const { data, error } = await supabase
+            .from('academies')
+            .select('*')
+            .eq('id', id)
+            .single();
+
+        if (error) {
+            if (error.code === 'PGRST116') return null; // Not found
+            throw error;
         }
+
+        return data;
     }
 
     static async update(id, updateData) {
-        const pool = database.getPool();
-        const connection = await pool.getConnection();
-        try {
-            // Dynamic query construction would be better, but keeping it simple for now
-            let sql = 'UPDATE academies SET updated_at = CURRENT_TIMESTAMP';
-            const binds = { id };
+        const supabase = database.getClient();
 
-            if (updateData.name) {
-                sql += ', name = :name';
-                binds.name = updateData.name;
-            }
-            if (updateData.status) {
-                sql += ', status = :status';
-                binds.status = updateData.status;
-            }
-            if (updateData.owner_id) {
-                sql += ', owner_id = :owner_id';
-                binds.owner_id = updateData.owner_id;
-            }
+        const updates = {
+            updated_at: new Date().toISOString()
+        };
 
-            sql += ' WHERE id = :id';
+        if (updateData.name) updates.name = updateData.name;
+        if (updateData.status) updates.status = updateData.status;
+        if (updateData.owner_id) updates.owner_id = updateData.owner_id;
 
-            await connection.execute(sql, binds);
-            await connection.commit();
-            return this.findById(id);
-        } catch (err) {
-            await connection.rollback();
-            throw err;
-        } finally {
-            if (connection) await connection.close();
-        }
+        const { data, error } = await supabase
+            .from('academies')
+            .update(updates)
+            .eq('id', id)
+            .select()
+            .single();
+
+        if (error) throw error;
+        return data;
     }
 }
 

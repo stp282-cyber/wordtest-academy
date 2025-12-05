@@ -1,13 +1,8 @@
 const Academy = require('../models/Academy');
-
 const User = require('../models/User');
-const database = require('../config/database');
 const { ROLES } = require('../config/constants');
 
 exports.createAcademy = async (req, res) => {
-    const pool = database.getPool();
-    const connection = await pool.getConnection();
-
     try {
         const { name, subdomain, adminUsername, adminPassword, adminName, adminEmail } = req.body;
 
@@ -15,11 +10,6 @@ exports.createAcademy = async (req, res) => {
         if (!name || !subdomain || !adminUsername || !adminPassword) {
             return res.status(400).json({ message: 'Missing required fields' });
         }
-
-        // Start transaction (manual handling since models use auto-commit usually, but we need atomicity)
-        // Note: Our models currently commit individually. For true transaction, we should pass connection to models.
-        // For now, we'll do it sequentially and handle cleanup on error if possible, or rely on manual fix.
-        // Ideally, models should accept an optional connection parameter.
 
         // 1. Create Academy
         console.log('Creating academy with data:', { name, subdomain });
@@ -37,7 +27,7 @@ exports.createAcademy = async (req, res) => {
             username: adminUsername,
             password: adminPassword,
             full_name: adminName || 'Academy Admin',
-            role: 'ACADEMY_ADMIN', // Use uppercase to match frontend Login.jsx
+            role: 'ACADEMY_ADMIN',
             email: adminEmail
         });
         console.log('Admin user created:', newUser);
@@ -50,12 +40,11 @@ exports.createAcademy = async (req, res) => {
 
     } catch (error) {
         console.error(error);
-        if (error.code === 'ORA-00001') { // Unique constraint violation
+        // Check for Supabase unique constraint violation
+        if (error.code === '23505') {
             return res.status(409).json({ message: 'Subdomain or username already exists' });
         }
         res.status(500).json({ message: 'Server error', error: error.message });
-    } finally {
-        if (connection) await connection.close();
     }
 };
 
