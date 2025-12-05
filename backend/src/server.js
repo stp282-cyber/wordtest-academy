@@ -36,26 +36,15 @@ app.get('/api/test', (req, res) => {
     res.json({ message: 'Backend is working!' });
 });
 
-// Routes - Temporarily commented out for debugging
+// Routes - Will be added one by one after frontend deployment
+// TODO: Add routes back after testing
 /*
 app.use('/api/auth', require('./routes/auth'));
-app.use('/api/academies', require('./routes/academies'));
-app.use('/api/billing', require('./routes/billing'));
-app.use('/api/wordbooks', require('./routes/wordbooks'));
 app.use('/api/users', require('./routes/users'));
-app.use('/api/students', require('./routes/users'));
-app.use('/api/progress', require('./routes/progress'));
+app.use('/api/academies', require('./routes/academies'));
+app.use('/api/wordbooks', require('./routes/wordbooks'));
 app.use('/api/classes', require('./routes/classes'));
-app.use('/api/curriculum', require('./routes/curriculum'));
-app.use('/api/learning', require('./routes/learning'));
-app.use('/api/tests', require('./routes/tests'));
-app.use('/api/games', require('./routes/games'));
-app.use('/api/rewards', require('./routes/rewards'));
-app.use('/api/announcements', require('./routes/announcements'));
-app.use('/api/messages', require('./routes/messages'));
-app.use('/api/backup', require('./routes/backup'));
-app.use('/api/analytics', require('./routes/analytics'));
-app.use('/api/listening', require('./routes/listeningTests'));
+... etc
 */
 
 // Error Handling
